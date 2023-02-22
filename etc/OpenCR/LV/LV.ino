@@ -1,26 +1,25 @@
+
 #include <stdio.h>
 #include <Servo.h>
 #include <math.h>
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float32.h>
-#include <sensor_msgs/Imu.h>
 #include <SD.h>
-#include <IMU.h>
 #include <lrc2ocr.h>
 #include <ocr2lrc.h>
-
 // Period
 #define BAUD_RATE     (57600)
 #define CYCLE_TIME    (100000) // us
 #define SEC_TIME      (1000000) // us
-#define T_TIME        (100) // us
-#define ANGLE_TIME    (33000) // us
+#define T_TIME        (100L) // us
+#define ANGLE_TIME    (33000L) // us
 
 // PIN
 #define STEER_PIN     (6)
-#define SD_PIN        (10)
+#define SD_PIN        (BUILTIN_SDCARD)
 #define THROTTLE_PIN  (9)
+#define GEAR_PIN      (4)
 #define EN_PINA       (3)
 #define EN_PINB       (2)
 
@@ -35,11 +34,12 @@
 #define MIN_STEER     (1200)
 #define STEER_CENTER  (1480)
 
-#define DATA_LOG      (0)
+#define DATA_LOG      (1)
 
-cIMU  IMU;
+//cIMU  IMU;
 Servo throttle_;
 Servo steer_;
+Servo gear_;
 int Index_;
 bool Alpha_ = false;
 float raw_throttle_;
@@ -54,11 +54,9 @@ volatile int CountT_;
 volatile int cumCountT_;
 char filename_[] = "LV1_00.TXT";
 File logfile_;
-
-HardwareTimer Timer1(TIMER_CH1); // T Method
-HardwareTimer Timer2(TIMER_CH2); // Check EN
-HardwareTimer Timer3(TIMER_CH3); // Angle
-
+IntervalTimer Timer_1;
+IntervalTimer Timer_2;
+IntervalTimer Timer_3;
 /*
    ros Subscribe Callback Function
 */
@@ -71,6 +69,23 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   pred_vel_ = msg.pred_vel;
   Alpha_ = msg.alpha;
 }
+
+/*
+   Gear Setup
+*/
+
+void set_gear(int gear,Servo myservo){
+  if (gear==3){
+    myservo.write(35);
+  }
+  if (gear==2){
+    myservo.write(90);
+  }
+  if (gear==1){
+    myservo.write(145);
+  }
+}
+
 /*
    SPEED to RPM
 */
@@ -83,7 +98,7 @@ float Kf_ = 1.0;  // feed forward const.
 float dt_ = 0.1;
 float circ_ = WHEEL_DIM * M_PI;
 scale_truck_control::ocr2lrc pub_msg_;
-sensor_msgs::Imu imu_msg_;
+//sensor_msgs::Imu imu_msg_;
 float setSPEED(float tar_vel, float cur_vel) { 
   static float output, err, prev_err, P_err, I_err;
   static float prev_u_k, prev_u, A_err;
@@ -91,9 +106,9 @@ float setSPEED(float tar_vel, float cur_vel) {
   float u, u_k;
   float u_dist, u_dist_k;
   float ref_vel;
-  pub_msg_.cur_vel = cur_vel;	//Publishing cur_vel has nothing to do with pred_vel
-  if(Alpha_){	//Encoder fail
-	  cur_vel = pred_vel_;
+  pub_msg_.cur_vel = cur_vel;  //Publishing cur_vel has nothing to do with pred_vel
+  if(Alpha_){ //Encoder fail
+    cur_vel = pred_vel_;
   }
   if(tar_vel <= 0 ) {
     output = ZERO_PWM;
@@ -122,11 +137,11 @@ float setSPEED(float tar_vel, float cur_vel) {
     A_err += Ka_ * ((prev_u_k - prev_u) / dt_);
     u = P_err + I_err + A_err + ref_vel * Kf_;
 
-	if(u > 2.0) u_k = 2.0;
+  if(u > 2.0) u_k = 2.0;
     else if(u <= 0) u_k = 0;
     else u_k = u;
 
-	pub_msg_.u_k = u_k;
+  pub_msg_.u_k = u_k;
 
     // inverse function 
     output = (-4.8278e-02+sqrt(pow(-4.8278e-02, 2)-4*(-1.1446e-05)*(-47.94-u_k)))/(2*(-1.1446e-05));
@@ -144,20 +159,9 @@ float setSPEED(float tar_vel, float cur_vel) {
    ANGLE to PWM
 */
 void setANGLE() {
+  Serial.println("in Set angle");
   static float output;
   float angle = tx_steer_;
-  if(IMU.update() > 0) {
-    imu_msg_.orientation.x = IMU.quat[0];
-    imu_msg_.orientation.y = IMU.quat[1];
-    imu_msg_.orientation.z = IMU.quat[2];
-    imu_msg_.orientation.w = IMU.quat[3];
-    imu_msg_.angular_velocity.x = IMU.angle[0];
-    imu_msg_.angular_velocity.y = IMU.angle[1];
-    imu_msg_.angular_velocity.z = IMU.angle[2];
-    imu_msg_.linear_acceleration.x = IMU.rpy[0];
-    imu_msg_.linear_acceleration.y = IMU.rpy[1];
-    imu_msg_.linear_acceleration.z = IMU.rpy[2];
-  }
   output = (angle * 12.0) + (float)STEER_CENTER;
   if(output > MAX_STEER)
     output = MAX_STEER;
@@ -186,6 +190,8 @@ void getENA() {
       EN_pos_ -= 1;
     }
   }
+//  Serial.print("En pos");
+//  Serial.println(EN_pos_);
   cumCountT_ += CountT_;
   CountT_ = 0;
 }
@@ -193,6 +199,8 @@ void getENA() {
    RPM Check Function
 */
 void CheckEN() {
+//  EN_pos_=-EN_pos_;
+  Serial.print("in CheckEN\n");
   static float output_vel;
   static float output_angle;
   static float cur_vel;
@@ -206,27 +214,36 @@ void CheckEN() {
     cur_vel = 0;
   else
     cur_vel = (float)EN_pos_ / TICK2CYCLE * ( SEC_TIME / ((float)cumCountT_*T_TIME)) * circ_; // m/s
-
+//    Serial.println("current Velocity is");
+//    Serial.println(cur_vel);
   if(cur_vel < 0)
     cur_vel = 0;
+  Serial.print("current Velocity: ");
+  Serial.println(cur_vel);
   output_vel = setSPEED(target_vel, cur_vel);
-  output_angle = IMU.rpy[2];
   if(DATA_LOG)
   {
     Serial.print(target_vel);
     Serial.print(" m/s | ");
+    
     Serial.print(cur_vel);
     Serial.print(" m/s | ");
+    
     Serial.print(output_vel);
     Serial.println(" signal | ");
+    
     Serial.print(EN_pos_);
     Serial.print(" count | ");
+    
     Serial.print(cumCountT_);
     Serial.print(" count | ");
+    
     Serial.print(output_vel);
     Serial.print(" us | ");
+    
     Serial.print(target_ANGLE);
     Serial.print(" deg | ");
+    
     Serial.print(output_angle);
     Serial.println(" deg");
   }
@@ -253,11 +270,6 @@ void CheckEN() {
   logfile_.print(",");
   logfile_.print(target_ANGLE);
   logfile_.print(",");
-  logfile_.print(IMU.rpy[0]);
-  logfile_.print(",");
-  logfile_.print(IMU.rpy[1]);
-  logfile_.print(",");
-  logfile_.println(IMU.rpy[2]);
   logfile_.close();
   // CLEAR counter
   ClearT();
@@ -268,6 +280,8 @@ void ClearT() {
 }
 void CountT() {
   CountT_ += 1;
+//  Serial.print(CountT_);
+//  Serial.print("\n");
 }
 /*
    ros variable
@@ -284,10 +298,11 @@ void setup() {
   nh_.advertise(rosPubMsg);
   throttle_.attach(THROTTLE_PIN);
   steer_.attach(STEER_PIN);
+  gear_.attach(GEAR_PIN);
+  set_gear(1,gear_);
   pinMode(EN_PINA, INPUT);
   pinMode(EN_PINB, INPUT);
-  attachInterrupt(0, getENA, CHANGE);
-  IMU.begin();
+  attachInterrupt(3, getENA, CHANGE);
   Serial.begin(BAUD_RATE);
   if(!SD.begin(10)){
     Serial.println("Card failed, or not present");
@@ -305,18 +320,10 @@ void setup() {
     Serial.print(filename_);
     logfile_.close();
   }
-  Timer1.stop();
-  Timer1.setPeriod(T_TIME);
-  Timer1.attachInterrupt(CountT);
-  Timer1.start();
-  Timer2.stop();
-  Timer2.setPeriod(CYCLE_TIME);
-  Timer2.attachInterrupt(CheckEN);
-  Timer2.start();
-  Timer3.stop();
-  Timer3.setPeriod(ANGLE_TIME);
-  Timer3.attachInterrupt(setANGLE);
-  Timer3.start();
+  Serial.print("here");
+  Timer_1.begin(CountT, T_TIME);
+  Timer_2.begin(CheckEN, CYCLE_TIME);
+  Timer_3.begin(setANGLE, ANGLE_TIME);
   Serial.print("[OpenCR] setup()");
   tx_throttle_ = 0.0;
   tx_steer_ = 0.0;
