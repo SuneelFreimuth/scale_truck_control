@@ -4,11 +4,24 @@ The Center Resiliency Coordinator (CRC) module is designed to manage and coordin
 
 ## Table of Contents
 
+- [How-it-Works](#How-it-Works)
 - [Installation](#installation)
 - [Dependencies](#dependencies)
 - [Usage](#usage)
 - [API](#api)
 - [License](#license)
+
+## How-it-Works
+
+1. The CRC module initializes the necessary UDP sockets for sending and receiving data from the trucks and the control center.
+2. The module continuously receives data packets from each truck, containing the current velocities, distances, and reliability of the velocity sensors.
+3. The CRC module processes the received data, checking the platooning mode of each truck, and updating its internal state accordingly.
+4. The module then predicts the velocity for each truck based on their current state, platooning mode, and sensor reliability.
+5. The CRC module sends the predicted velocities back to the trucks over UDP.
+6. The trucks use the received velocities to adjust their speeds and maintain their positions within the platoon.
+7. The CRC module prints out the current state, platooning mode, and predicted velocities for each truck to the console for monitoring and debugging purposes.
+
+This continuous process ensures that the platooning system remains efficient, safe, and robust in the face of any sensor failures or unexpected changes in the truck's behavior.
 
 ## Installation
 
