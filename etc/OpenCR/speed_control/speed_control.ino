@@ -1,5 +1,4 @@
 
-// Required Libararies
 #include <stdio.h>
 #include <Servo.h>
 #include <math.h>
@@ -9,21 +8,21 @@
 #include <SD.h>
 #include <lrc2ocr.h>
 #include <ocr2lrc.h>
-
-// Timing Periods
+// Period
 #define BAUD_RATE     (57600)
 #define CYCLE_TIME    (100000) // us
 #define SEC_TIME      (1000000) // us
 #define T_TIME        (100L) // us
 #define ANGLE_TIME    (33000L) // us
 
-// Pin Configurations
+// PIN
 #define STEER_PIN     (6)
 #define SD_PIN        (BUILTIN_SDCARD)
-#define THROTTLE_PIN  (9)
+#define THROTTLE_PIN  (8)
 #define GEAR_PIN      (4)
 #define EN_PINA       (3)
 #define EN_PINB       (2)
+#define VOLT_PIN      (A0)
 
 // Encoder
 #define TICK2CYCLE    (60) // (65) // 65 ticks(EN_pos_) = 1 wheel cycle
@@ -36,13 +35,13 @@
 #define MIN_STEER     (1200)
 #define STEER_CENTER  (1480)
 
-// Enable VEBBOSE
-#define DATA_LOG      (1)
+#define DATA_LOG      (0)
 
-Servo throttle_;  //Setup Throttle
-Servo steer_;     //Setup Steering
-Servo gear_;      //Setup Trasnmission
-
+//cIMU  IMU;
+float temp_vel=0;
+Servo throttle_;
+Servo steer_;
+Servo gear_;
 int Index_;
 bool Alpha_ = false;
 float raw_throttle_;
@@ -52,23 +51,19 @@ float tx_dist_;
 float tx_tdist_;
 float pred_vel_ = 0;
 float output_;
-
-// Setup Global Variables
 volatile int EN_pos_;
 volatile int CountT_;
 volatile int cumCountT_;
-
-// Setup the File
 char filename_[] = "LV1_00.TXT";
 File logfile_;
-
-// Setup Timers
 IntervalTimer Timer_1;
 IntervalTimer Timer_2;
 IntervalTimer Timer_3;
-
-// Ros Subscribe Callback Function
+/*
+   ros Subscribe Callback Function
+*/
 void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
+  
   Index_ = msg.index;
   tx_steer_ = msg.steer_angle;  // float32
   tx_dist_ = msg.cur_dist;
@@ -78,7 +73,10 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   Alpha_ = msg.alpha;
 }
 
-// Gear Setuo Function
+/*
+   Gear Setup
+*/
+
 void set_gear(int gear,Servo myservo){
   if (gear==3){
     myservo.write(35);
@@ -91,10 +89,20 @@ void set_gear(int gear,Servo myservo){
   }
 }
 
+float get_voltage(int sensorPin){
+  
+  float ratio = 72.1;
+  int sensorValue;
+  float voltage;
+  
+  sensorValue = analogRead(sensorPin);
+  voltage=sensorValue/ratio;
+  return voltage;
+}
+
 /*
    SPEED to RPM
 */
-// Define the Loop Variables
 float Kp_dist_ = 1.0; // 2.0; //0.8;
 float Kd_dist_ = 0.05; ///0.05;
 float Kp_ = 0.8; // 2.0; //0.8;
@@ -103,12 +111,7 @@ float Ka_ = 0.01;
 float Kf_ = 1.0;  // feed forward const.
 float dt_ = 0.1;
 float circ_ = WHEEL_DIM * M_PI;
-
-// Setup the Ros scale_truck_control Meesaging Protocol
 scale_truck_control::ocr2lrc pub_msg_;
-
-
-// PID Function to setup Speed
 float setSPEED(float tar_vel, float cur_vel) { 
   static float output, err, prev_err, P_err, I_err;
   static float prev_u_k, prev_u, A_err;
@@ -116,10 +119,10 @@ float setSPEED(float tar_vel, float cur_vel) {
   float u, u_k;
   float u_dist, u_dist_k;
   float ref_vel;
-  pub_msg_.cur_vel = cur_vel;  //Publishing cur_vel has nothing to do with pred_vel
-  if(Alpha_){ //Encoder fail
-    cur_vel = pred_vel_;
-  }
+  pub_msg_.cur_vel = 1.5;  //Publishing cur_vel has nothing to do with pred_vel
+//  if(Alpha_){ //Encoder fail
+//    cur_vel = pred_vel_;
+//  }
   if(tar_vel <= 0 ) {
     output = ZERO_PWM;
     I_err = 0;
@@ -162,14 +165,30 @@ float setSPEED(float tar_vel, float cur_vel) {
   prev_u_k = u_k;
   prev_u = u;
   prev_dist_err = dist_err;
-  throttle_.writeMicroseconds(output);
+  float voltage=get_voltage(VOLT_PIN);
+    if (voltage<=6.4){
+    throttle_.writeMicroseconds(1800);
+  }
+    else{
+  throttle_.writeMicroseconds(1800);
+    }
   return output;
 }
 /*
    ANGLE to PWM
 */
+//void setANGLE() {
+//  Serial.println("in Set angle");
+//  static float output;
+//  output = (angle * 12.0) + (float)STEER_CENTER;
+//  if(output > MAX_STEER)
+//    output = MAX_STEER;
+//  else if(output < MIN_STEER)
+//    output = MIN_STEER;
+//  steer_.writeMicroseconds(output);
+//  steer_.writeMicroseconds(output);
+//}
 void setANGLE() {
-  Serial.println("in Set angle");
   static float output;
   float angle = tx_steer_;
   output = (angle * 12.0) + (float)STEER_CENTER;
@@ -177,14 +196,23 @@ void setANGLE() {
     output = MAX_STEER;
   else if(output < MIN_STEER)
     output = MIN_STEER;
-  steer_.writeMicroseconds(output);
+    if (DATA_LOG){
+      Serial.println("");
+      Serial.print(angle);
+      Serial.print("||");
+      Serial.println(output);
+  
+    }
+  steer_.writeMicroseconds(1800);
 }
 /*
    Encoder A interrupt service routine
 */
 void getENA() {
   if (digitalRead(EN_PINA) == HIGH) {
+//    Serial.print("in A\n");
     if (digitalRead(EN_PINB) == LOW) {
+//      Serial.print("in B\n");
       EN_pos_ += 1;  // white + black
     }
     else {
@@ -210,7 +238,7 @@ void getENA() {
 */
 void CheckEN() {
 //  EN_pos_=-EN_pos_;
-  Serial.print("in CheckEN\n");
+//  Serial.print("in CheckEN\n");
   static float output_vel;
   static float output_angle;
   static float cur_vel;
@@ -218,7 +246,7 @@ void CheckEN() {
   static float target_ANGLE;
   static float target_RPM;
   static float cur_RPM;
-  target_vel = tx_throttle_; // m/s
+  target_vel = 0.7; // m/s
   target_ANGLE = tx_steer_; // degree
   if(cumCountT_ == 0)
     cur_vel = 0;
@@ -228,8 +256,8 @@ void CheckEN() {
 //    Serial.println(cur_vel);
   if(cur_vel < 0)
     cur_vel = 0;
-  Serial.print("current Velocity: ");
-  Serial.println(cur_vel);
+//  Serial.print("current Velocity: ");
+//  Serial.println(cur_vel);
   output_vel = setSPEED(target_vel, cur_vel);
   if(DATA_LOG)
   {
@@ -240,7 +268,10 @@ void CheckEN() {
     Serial.print(" m/s | ");
     
     Serial.print(output_vel);
-    Serial.println(" signal | ");
+    Serial.print(" signal | ");
+
+    Serial.print(get_voltage(VOLT_PIN));
+    Serial.println(" voltage | ");
     
     Serial.print(EN_pos_);
     Serial.print(" count | ");
@@ -310,6 +341,7 @@ void setup() {
   steer_.attach(STEER_PIN);
   gear_.attach(GEAR_PIN);
   set_gear(1,gear_);
+  pinMode(VOLT_PIN, INPUT);
   pinMode(EN_PINA, INPUT);
   pinMode(EN_PINB, INPUT);
   attachInterrupt(3, getENA, CHANGE);
@@ -366,7 +398,7 @@ void loop() {
   }
   
   nh_.spinOnce();
-  delay(1);
+//  delay(1);
   
   currentTime = millis();
   if ((currentTime - prevTime) >= (ANGLE_TIME / 1000)) {
