@@ -200,8 +200,6 @@ void getENA() {
       EN_pos_ -= 1;
     }
   }
-//  Serial.print("En pos");
-//  Serial.println(EN_pos_);
   cumCountT_ += CountT_;
   CountT_ = 0;
 }
@@ -209,7 +207,6 @@ void getENA() {
    RPM Check Function
 */
 void CheckEN() {
-//  EN_pos_=-EN_pos_;
   Serial.print("in CheckEN\n");
   static float output_vel;
   static float output_angle;
@@ -224,39 +221,41 @@ void CheckEN() {
     cur_vel = 0;
   else
     cur_vel = (float)EN_pos_ / TICK2CYCLE * ( SEC_TIME / ((float)cumCountT_*T_TIME)) * circ_; // m/s
-//    Serial.println("current Velocity is");
-//    Serial.println(cur_vel);
   if(cur_vel < 0)
     cur_vel = 0;
   Serial.print("current Velocity: ");
   Serial.println(cur_vel);
   output_vel = setSPEED(target_vel, cur_vel);
-  if(DATA_LOG)
-  {
+  if (DATA_LOG) {
+    Serial.print("Target Velocity: ");
     Serial.print(target_vel);
     Serial.print(" m/s | ");
     
+    Serial.print("Current Velocity: ");
     Serial.print(cur_vel);
     Serial.print(" m/s | ");
     
+    Serial.print("Throttle Signal: ");
     Serial.print(output_vel);
-    Serial.println(" signal | ");
+    Serial.println(" us | ");
     
+    Serial.print("Encoder Position: ");
     Serial.print(EN_pos_);
-    Serial.print(" count | ");
+    Serial.print(" ticks | ");
     
+    Serial.print("Cumulative Count: ");
     Serial.print(cumCountT_);
-    Serial.print(" count | ");
+    Serial.print(" ticks | ");
     
-    Serial.print(output_vel);
-    Serial.print(" us | ");
-    
+    Serial.print("Target Angle: ");
     Serial.print(target_ANGLE);
     Serial.print(" deg | ");
     
+    Serial.print("Output Angle: ");
     Serial.print(output_angle);
     Serial.println(" deg");
   }
+
   logfile_ = SD.open(filename_, FILE_WRITE);
   logfile_.print(target_vel);
   logfile_.print(",");
@@ -290,8 +289,6 @@ void ClearT() {
 }
 void CountT() {
   CountT_ += 1;
-//  Serial.print(CountT_);
-//  Serial.print("\n");
 }
 /*
    ros variable
