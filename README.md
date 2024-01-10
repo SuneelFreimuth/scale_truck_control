@@ -27,7 +27,7 @@ Demonstration of a platoon with 3 trucks: https://www.youtube.com/watch?v=wKmWD8
 * Case Study: Camera Failure. 2:31
 * Emergency Stop: 2:45
 
-## IV. Installation Instructions
+## IV. Installation
 ### Step 1: Install Jetpack 4.5.1 (ubuntu 18.04 LTS)
 If not done already, flash the Jetson with Nvidia Jetpack 4.5.1: https://developer.nvidia.com/embedded/jetpack
 
@@ -105,6 +105,7 @@ Edit the pkg-config file for OpenCV:
 ```
 sudo vim /usr/lib/pkgconfig/opencv.pc
 ```
+
 And add the following:
 ```
 prefix=/usr/local
@@ -170,8 +171,8 @@ sudo ldconfig
 cd ../../
 ```
 
-TODO: I don't think the following is necessary?
->-Setup the path
+TODO: I don't think the following is necessary, but do it anyways.
+>Setup the path
 >~~~
 >sudo cp -R /usr/local/lib/* /usr/lib
 >~~~
@@ -231,7 +232,8 @@ If using Python 3:
 catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
 ```
 
-### Step 7: Add scale_truck_control and Dependencies
+### Step 7: Clone scale_truck_control and Dependencies
+
 Enter `~/catkin_ws/src`, which was created in the last step, then clone scale_truck_control and each of its dependencies:
 ```
 cd ~/catkin_ws/src
@@ -280,7 +282,7 @@ vision_opencv requires the following modifications:
 
 Install rosserial-arduino for ROS Melodic for communication with the low-level controller:
 ```
-sudo apt-get install ros-melodic-rosserial ros-melodic-rosserial-arduino   
+sudo apt-get install ros-melodic-rosserial ros-melodic-rosserial-arduino
 ```
 
 TODO: I believe the following is only necessary to run the GUI controller. Skip.
@@ -296,6 +298,7 @@ catkin_make
 ```
 
 ## Run
+
 After building scale_truck_control as described in the previous section, run `roslaunch`:
 ```
 roslaunch scale_truck_control LV.launch
