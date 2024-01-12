@@ -91,7 +91,6 @@ set(PROJECT_LIB_FILES
   src/lrc.cpp
   src/ScaleTruckController.cpp
   src/sock_udp.cpp
-  src/zmq_class.cpp
 )
 
 #

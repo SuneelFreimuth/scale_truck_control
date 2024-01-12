@@ -30,11 +30,12 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include "lane_detect/lane_detect.hpp"
-#include "zmq_class/zmq_class.h"
 
 //custom msgs
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
+
+#include "sock_udp/sock_udp.hpp"
 
 #include "common.hpp"
 
@@ -63,6 +64,13 @@ class ScaleTruckController {
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
+ 
+    UDPsock::UDPsocket UDPsend_;
+    UDPsock::UDPsocket UDPrecv_;
+    std::string ADDR_;
+    int Index_;
+    int PORT_;
+    struct UDPsock::UDP_DATA udpData_;
 	
     TruckIndex Index_;
     double CycleTime_ = 0.0;
@@ -91,11 +99,10 @@ class ScaleTruckController {
     float SafetyDist_;
     bool Gamma_ = false;
 
-    //ZMQ
-    ZMQ_CLASS ZMQ_SOCKET_;
-
     //Thread
     std::thread controlThread_;
+    std::thread udpsendThread_;
+    std::thread udprecvThread_;
     std::mutex mutex_;
 
     obstacle_detector::Obstacles Obstacle_;
