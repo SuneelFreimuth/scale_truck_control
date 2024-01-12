@@ -36,6 +36,8 @@
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
 
+#include "common.hpp"
+
 namespace scale_truck_control {
 
 class ScaleTruckController {
@@ -62,6 +64,7 @@ class ScaleTruckController {
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
 	
+    TruckIndex Index_;
     double CycleTime_ = 0.0;
     //image
     LaneDetect::LaneDetector laneDetector_;

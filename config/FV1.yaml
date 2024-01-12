@@ -1,3 +1,6 @@
+// FV1
+truck_index: 1
+
 tcp_ip:
   sub_port: "5555"
   pub_port: "5555"

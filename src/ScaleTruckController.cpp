@@ -32,6 +32,8 @@ ScaleTruckController::~ScaleTruckController() {
 }
 
 bool ScaleTruckController::readParameters() {
+  nodeHandle_.getParam("truck_index", (int&) Index_);
+
   /***************/
   /* View Option */
   /***************/
@@ -192,36 +194,30 @@ void* ScaleTruckController::objectdetectInThread() {
     laneDetector_.distance_ = 0;
   }
   
-  if(ZMQ_SOCKET_.zipcode_.compare(std::string("00000"))){	
-      /***************/
-      /* LV velocity */
-      /***************/
+  if(Index_ == LV){	
 	  if(distance_ <= LVstopDist_) {
-		// Emergency Brake
+      // Emergency Brake
 	    ResultVel_ = 0.0f;
 	  }
 	  else if (distance_ <= SafetyDist_){
 	    float TmpVel_ = (ResultVel_-SafetyVel_)*((distance_-LVstopDist_)/(SafetyDist_-LVstopDist_))+SafetyVel_;
-		if (TargetVel_ < TmpVel_){
-			ResultVel_ = TargetVel_;
-		}
-		else{
-			ResultVel_ = TmpVel_;
-		}
+      if (TargetVel_ < TmpVel_){
+        ResultVel_ = TargetVel_;
+      }
+      else{
+        ResultVel_ = TmpVel_;
+      }
 	  }
 	  else{
-		ResultVel_ = TargetVel_;
+      ResultVel_ = TargetVel_;
 	  }
   }
   else{
-      /***************/
-      /* FV velocity */
-      /***************/
 	  if ((distance_ <= FVstopDist_) || (TargetVel_ <= 0.1f)){
-		// Emergency Brake
-		ResultVel_ = 0.0f;
-	  } else {
-		ResultVel_ = TargetVel_;
+      // Emergency Brake
+      ResultVel_ = 0.0f;
+    } else {
+      ResultVel_ = TargetVel_;
 	  }
   }
 }

@@ -35,7 +35,7 @@ void LocalRC::init(){
 	std::string OcrPubTopicName;
 	int OcrPubQueueSize;
 
-	nodeHandle_.param("params/truck_info", Index_, 0);
+	nodeHandle_.getParam("truck_index", (int&) Index_);
 
 	nodeHandle_.param("LrcParams/udp_group_addr", ADDR_, std::string("239.255.255.250"));
 	nodeHandle_.param("LrcParams/udp_group_port", PORT_, 9392);	
@@ -179,7 +179,7 @@ void LocalRC::VelocitySensorCheck(){
 }
 
 void LocalRC::ModeCheck(uint8_t crc_mode){
-	if(!Index_){	//LV
+	if(Index_ == LV) {
 		if(Beta_){	//Camera sensor failure
 			LrcMode_ = 2;	//GDM
 		}
