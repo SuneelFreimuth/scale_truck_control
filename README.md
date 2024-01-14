@@ -12,7 +12,6 @@
 High-level Controller
 * Jetpack: 4.5.1 version - Ubuntu 18.04 LTS
 * OpenCV: 4.4.0 version - include options (GPU, CUDA, CUDNN)
-* ZeroMQ: stable version
 * ROS 1: melodic version
 
 Low-level Controller
@@ -127,57 +126,7 @@ sudo -H pip3 install jetson-stats
 jetson_release
 ```
 
-### Step 4: Install ZeroMQ
-
-Install libsodium, a dependency of libzmq:
-```
-wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz
-tar -xvf libsodium-*
-rm *libsodium-1.0.18-stable.tar.gz
-cd libsodium-stable
-./configure
-sudo make clean
-sudo make -j8
-sudo make install 
-sudo ldconfig
-cd ../
-```
-
-Build, check, and install the latest version of ZeroMQ
-```
-wget https://github.com/zeromq/libzmq/archive/master.zip
-unzip master.zip
-rm master.zip
-cd libzmq-master
-./autogen.sh 
-./configure --with-libsodium
-mkdir build
-cd build && cmake .. -DENABLE_DRAFTS=ON
-sudo make -j8 install
-sudo ldconfig
-cd ../../
-```
-
-Finally, install cppzmq:
-```
-wget https://github.com/zeromq/cppzmq/archive/master.zip
-unzip master.zip
-rm master.zip
-cd cppzmq-master
-mkdir build && cd build
-cmake .. -DENABLE_DRAFTS=ON
-sudo make -j8 install
-sudo ldconfig
-cd ../../
-```
-
-TODO: I don't think the following is necessary, but do it anyways.
->Setup the path
->~~~
->sudo cp -R /usr/local/lib/* /usr/lib
->~~~
-
-### Step 5: Install ROS
+### Step 4: Install ROS
 
 Add the ROS repositories to `/etc/apt/sources.list.d/`:
 ```
@@ -218,7 +167,7 @@ Install dependencies for either Python 2 or 3:
     sudo pip3 install rospkg catkin_pkg
     ```
 
-### Step 6: Create a Catkin Workspace
+### Step 5: Create a Catkin Workspace
 
 Make a directory for the catkin workspace and run catkin_make:
 ```
@@ -232,7 +181,7 @@ If using Python 3:
 catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
 ```
 
-### Step 7: Clone scale_truck_control and Dependencies
+### Step 6: Clone scale_truck_control and Dependencies
 
 Enter `~/catkin_ws/src`, which was created in the last step, then clone scale_truck_control and each of its dependencies:
 ```
