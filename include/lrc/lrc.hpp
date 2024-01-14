@@ -18,6 +18,8 @@
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/lrc2ocr.h>
 
+#include "common.hpp"
+
 using namespace std;
 
 namespace LocalResiliencyCoordinator{
@@ -39,7 +41,7 @@ class LocalRC{
 		UDPsock::UDPsocket UDPsend_;
 		UDPsock::UDPsocket UDPrecv_;
 		std::string ADDR_;
-		int Index_;
+		TruckIndex Index_;
 		int PORT_;
 		struct UDPsock::UDP_DATA udpData_;
 
