@@ -72,6 +72,9 @@ int UDPsocket::recvData(struct UDP_DATA* Data)
 int UDPsocket::sendData(struct UDP_DATA Data)
 {
     int nbytes = sendto(fd_, &Data, sizeof(Data), 0, (struct sockaddr*) &addr_, sizeof(addr_));
+    std::cout << "Sending target velocity and distance to " << Data.to << " from " << Data.index << std::endl;
+    std::cout << "  Target velocity:" << Data.target_vel << std::endl;
+    std::cout << "  Target distance:" << Data.target_dist << std::endl;
     if (nbytes < 0)
     {
         perror("sendto");

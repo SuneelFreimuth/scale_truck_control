@@ -8,7 +8,8 @@ qTh::qTh(QObject *parent) : QThread(parent), UDPrecv()
 void qTh::run()
 {
     UDPrecv.GROUP_ = "239.255.255.250";
-    UDPrecv.PORT_ = 9307;
+    // UDPrecv.PORT_ = 9307;
+    UDPrecv.PORT_ = 9392;
     UDPrecv.recvInit();
     UDPsock::UDP_DATA tmp;
 

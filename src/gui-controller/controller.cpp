@@ -14,7 +14,8 @@ Controller::Controller(QWidget *parent)
 
     /* Setup Multicast UDP send&recv */
     UDPsend.GROUP_ = "239.255.255.250";
-    UDPsend.PORT_ = 9307;
+    // UDPsend.PORT_ = 9307;
+    UDPsend.PORT_ = 9392;
     UDPsend.sendInit();
 
     int DefaultVel = 0; // cm/s
