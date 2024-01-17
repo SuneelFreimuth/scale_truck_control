@@ -7,7 +7,7 @@ ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
   if (!readParameters()) {
     ros::requestShutdown();
   }
-
+  cv::startWindowThread();
   init();
 }
 
@@ -39,7 +39,7 @@ bool ScaleTruckController::readParameters() {
   /* View Option */
   /***************/
   nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
-  nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 3);
+  nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 1000);
   nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, true);
   
   /*******************/
@@ -168,7 +168,7 @@ void* ScaleTruckController::lanedetectInThread() {
   float AngleDegree;
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
-  AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+  AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
   if(cnt == 0){
     AngleDegree_ = -distAngle_;
   }
@@ -350,7 +350,7 @@ void ScaleTruckController::spin() {
     
     lanedetect_thread.join();
     objectdetect_thread.join();
-    udpsendThread.join();
+    //udpsendThread_.join();
 
     if(enableConsoleOutput_)
       displayConsole();

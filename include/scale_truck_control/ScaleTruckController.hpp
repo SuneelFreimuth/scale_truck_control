@@ -64,11 +64,12 @@ class ScaleTruckController {
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
+	ros::Subscriber Gui;
  
     UDPsock::UDPsocket UDPsend_;
     UDPsock::UDPsocket UDPrecv_;
     std::string ADDR_;
-    int Index_;
+    
     int PORT_;
     struct UDPsock::UDP_DATA udpData_;
 	
