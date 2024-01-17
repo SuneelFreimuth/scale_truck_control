@@ -90,8 +90,6 @@ class ScaleTruckController {
     float FVmaxVel_;
 
     //object
-    int ObjSegments_;
-    int ObjCircles_;
     float distance_;
     float distAngle_;
     float LVstopDist_;
@@ -106,7 +104,7 @@ class ScaleTruckController {
     std::thread udprecvThread_;
     std::mutex mutex_;
 
-    obstacle_detector::Obstacles Obstacle_;
+    obstacle_detector::Obstacles Obstacles_;
     boost::shared_mutex mutexObjectCallback_;
 
     std_msgs::Header imageHeader_;
