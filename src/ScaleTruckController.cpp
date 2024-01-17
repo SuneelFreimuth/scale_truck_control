@@ -296,11 +296,11 @@ void ScaleTruckController::displayConsole() {
   printf("\nTar/Cur Dist    : %3.3f / %3.3f m", TargetDist_, distance_);
   printf("\nK1/K2           : %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   if(!Obstacles_.circles.empty()) {
-    printf("\nCircles         : %d", Obstacles_.circles.size());
+    printf("\nCircles         : %lu", Obstacles_.circles.size());
     printf("\nDistAng         : %2.3f degree", distAngle_);
   }
   if(!Obstacles_.segments.empty()) {
-    printf("\nSegments        : %d", Obstacles_.circles.size());
+    printf("\nSegments        : %lu", Obstacles_.segments.size());
   }
   printf("\nCycle Time      : %3.3f ms", CycleTime_);
   printf("\n");
