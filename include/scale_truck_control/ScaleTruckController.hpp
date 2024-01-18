@@ -56,7 +56,7 @@ class ScaleTruckController {
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
     void XavSubCallback(const scale_truck_control::lrc2xav &msg);
-    //bool publishControlMsg(const scale_truck_control::ctl msg);
+    void guiTargetVelCallback(const std_msgs::Float32& target_vel);
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
@@ -64,7 +64,7 @@ class ScaleTruckController {
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
-	ros::Subscriber Gui;
+	  ros::Subscriber sub_gui_target_vel;
  
     UDPsock::UDPsocket UDPsend_;
     UDPsock::UDPsocket UDPrecv_;
@@ -88,6 +88,7 @@ class ScaleTruckController {
     float SafetyVel_;
     float ResultVel_;
     float FVmaxVel_;
+    std::mutex mutexTargetVel_;
 
     //object
     float distance_;

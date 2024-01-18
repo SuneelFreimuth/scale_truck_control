@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+using namespace std::string_literals;
+
 namespace {
   // Linearly maps x from [min0, max0] to [min1, max1].
   float interpolateLinear(float x, float min0, float max0, float min1, float max1) {
@@ -106,6 +108,8 @@ void ScaleTruckController::init() {
   imageSubscriber_ = nodeHandle_.subscribe("/usb_cam/image_raw", imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe("/raw_obstacles", objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe("/lrc2xav", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
+  auto gui_target_vel_topic = "/gui_targets/"s + std::to_string(Index_) + "/target_vel"s;
+  sub_gui_target_vel = nodeHandle_.subscribe(gui_target_vel_topic, 50, &ScaleTruckController::guiTargetVelCallback, this);
   
   /***********************/
   /* Ros Topic Publisher */
@@ -201,6 +205,12 @@ void* ScaleTruckController::objectdetectInThread() {
     laneDetector_.distance_ = 0;
   }
   
+  float target_vel;
+  {
+    const std::lock_guard<std::mutex> lock(mutexTargetVel_);
+    target_vel = TargetVel_;
+  }
+  
   if(Index_ == LV){	
 	  if(distance_ <= LVstopDist_) {
       // Emergency Brake
@@ -209,18 +219,18 @@ void* ScaleTruckController::objectdetectInThread() {
 	  else if (distance_ <= SafetyDist_){
 	    float TmpVel_ = interpolateLinear(
         distance_, LVstopDist_, SafetyDist_, SafetyVel_, ResultVel_);
-      ResultVel_ = std::min(TargetVel_, TmpVel_);
+      ResultVel_ = std::min(target_vel, TmpVel_);
 	  }
 	  else{
-      ResultVel_ = TargetVel_;
+      ResultVel_ = target_vel;
 	  }
   }
   else{
-	  if ((distance_ <= FVstopDist_) || (TargetVel_ <= 0.1f)){
+	  if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)){
       // Emergency Brake
       ResultVel_ = 0.0f;
     } else {
-      ResultVel_ = TargetVel_;
+      ResultVel_ = target_vel;
 	  }
   }
 }
@@ -399,6 +409,11 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
     boost::unique_lock<boost::shared_mutex> lockVelCallback(mutexVelCallback_);
     CurVel_ = msg.cur_vel;
   }	
+}
+
+void ScaleTruckController::guiTargetVelCallback(const std_msgs::Float32& target_vel) {
+  const std::lock_guard<std::mutex> lock(mutexTargetVel_);
+  TargetVel_ = target_vel.data;
 }
 
 } /* namespace scale_truck_control */ 
