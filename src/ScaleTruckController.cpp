@@ -1,5 +1,16 @@
 #include "scale_truck_control/ScaleTruckController.hpp"
 
+#include <algorithm>
+
+using namespace std::string_literals;
+
+namespace {
+  // Linearly maps x from [min0, max0] to [min1, max1].
+  float interpolateLinear(float x, float min0, float max0, float min1, float max1) {
+    return min0 + (x - min0) / (max0 - min0) * (max1 - min1);
+  }
+}
+
 namespace scale_truck_control{
 
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
@@ -7,7 +18,7 @@ ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
   if (!readParameters()) {
     ros::requestShutdown();
   }
-
+  cv::startWindowThread();
   init();
 }
 
@@ -39,7 +50,7 @@ bool ScaleTruckController::readParameters() {
   /* View Option */
   /***************/
   nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
-  nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 3);
+  nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 1000);
   nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, true);
   
   /*******************/
@@ -72,64 +83,55 @@ void ScaleTruckController::init() {
   
   gettimeofday(&laneDetector_.start_, NULL);
   
-  std::string imageTopicName;
   int imageQueueSize;
-  std::string objectTopicName;
   int objectQueueSize; 
-  std::string XavSubTopicName;
   int XavSubQueueSize;
-  std::string XavPubTopicName;
   int XavPubQueueSize;
-  std::string LanecoefTopicName;
   int LanecoefQueueSize;
 
   /******************************/
   /* Ros Topic Subscribe Option */
   /******************************/
-  nodeHandle_.param("subscribers/camera_reading/topic", imageTopicName, std::string("/usb_cam/image_raw"));
   nodeHandle_.param("subscribers/camera_reading/queue_size", imageQueueSize, 1);
-  nodeHandle_.param("subscribers/obstacle_reading/topic", objectTopicName, std::string("/raw_obstacles"));
   nodeHandle_.param("subscribers/obstacle_reading/queue_size", objectQueueSize, 100);
-  nodeHandle_.param("lrcSubPub/lrc_to_xavier/topic", XavSubTopicName, std::string("/lrc2xav_msg"));
   nodeHandle_.param("lrcSubPub/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
   
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
-  nodeHandle_.param("publishers/lane_coef/topic", LanecoefTopicName, std::string("/lane_msg"));
   nodeHandle_.param("publishers/lane_coef/queue_size", LanecoefQueueSize, 10);
-  nodeHandle_.param("lrcSubPub/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
   nodeHandle_.param("lrcSubPub/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
 
   /************************/
   /* Ros Topic Subscriber */
   /************************/
-  imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
-  objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
-  XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
+  imageSubscriber_ = nodeHandle_.subscribe("/usb_cam/image_raw", imageQueueSize, &ScaleTruckController::imageCallback, this);
+  objectSubscriber_ = nodeHandle_.subscribe("/raw_obstacles", objectQueueSize, &ScaleTruckController::objectCallback, this);
+  XavSubscriber_ = nodeHandle_.subscribe("/lrc2xav", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
+  auto gui_target_vel_topic = "/gui_targets/"s + std::to_string(Index_) + "/target_vel"s;
+  sub_gui_target_vel = nodeHandle_.subscribe(gui_target_vel_topic, 50, &ScaleTruckController::guiTargetVelCallback, this);
   
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
-  XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
-  LanecoefPublisher_ = nodeHandle_.advertise<scale_truck_control::lane_coef>(LanecoefTopicName, LanecoefQueueSize);
+  XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
+  LanecoefPublisher_ = nodeHandle_.advertise<scale_truck_control::lane_coef>("/lane_msg", LanecoefQueueSize);
 
   /*****************/
   /* UDP Multicast */
   /*****************/
-  UDPsend_.GROUP_ = ADDR_.c_str();
-  UDPsend_.PORT_ = PORT_;
-  UDPsend_.sendInit();
+  // UDPsend_.GROUP_ = ADDR_.c_str();
+  // UDPsend_.PORT_ = PORT_;
+  // UDPsend_.sendInit();
 
-  UDPrecv_.GROUP_ = ADDR_.c_str();
-  UDPrecv_.PORT_ = PORT_;
-  UDPrecv_.recvInit();
+  // UDPrecv_.GROUP_ = ADDR_.c_str();
+  // UDPrecv_.PORT_ = PORT_;
+  // UDPrecv_.recvInit();
 
   /**********************************/
   /* Control & Communication Thread */
   /**********************************/
   controlThread_ = std::thread(&ScaleTruckController::spin, this);
-  udprecvThread_ = std::thread(&ScaleTruckController::UDPrecvInThread, this);
 
   /**********************/
   /* Safety Start Setup */
@@ -160,15 +162,15 @@ void* ScaleTruckController::lanedetectInThread() {
     for(int ch = 0; ch<dst.channels();ch++) {
       count += countNonZero(channels[ch]);
     }
+    // TODO: Why???
     if(count == 0 && Beta_)
       cnt -= 1;
     else 
       cnt = 10;
   }
-  float AngleDegree;
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
-  AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+  float AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
   if(cnt == 0){
     AngleDegree_ = -distAngle_;
   }
@@ -177,38 +179,36 @@ void* ScaleTruckController::lanedetectInThread() {
 }
 
 void* ScaleTruckController::objectdetectInThread() {
-  float dist, angle; 
-  float dist_tmp, angle_tmp;
-  ObjSegments_ = Obstacle_.segments.size();
-  ObjCircles_ = Obstacle_.circles.size();
-   
-  dist_tmp = 10.f; 
-  /**************/
-  /* Lidar Data */
-  /**************/
-  for(int i = 0; i < ObjCircles_; i++)
-  {
+  float closest_obj_angle = 0.f;
+  float closest_obj_dist = 10.f;
+  for (const auto& circle : Obstacles_.circles) {
     //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-    dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
-    angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
-    if(dist_tmp >= dist) {
-      dist_tmp = dist;
-      angle_tmp = angle;
+    float dist = -circle.center.x - circle.true_radius;
+    float angle = atanf(circle.center.y/circle.center.x)*(180.0f/M_PI);
+    if(closest_obj_dist >= dist) {
+      closest_obj_dist = dist;
+      closest_obj_angle = angle;
     }
   }
-  if(ObjCircles_ != 0)
+  if(!Obstacles_.circles.empty())
   {
-    distance_ = dist_tmp;
-    distAngle_ = angle_tmp;
+    distance_ = closest_obj_dist;
+    distAngle_ = closest_obj_angle;
   }
   /*****************************/
   /* Dynamic ROI Distance Data */
   /*****************************/
-  if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
+  if(closest_obj_dist > 0.30 && closest_obj_dist < 1.24) // 1.26 ~ 0.28
   {
-    laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
+    laneDetector_.distance_ = (int)((1.24 - closest_obj_dist)*490.0);
   } else {
     laneDetector_.distance_ = 0;
+  }
+  
+  float target_vel;
+  {
+    const std::lock_guard<std::mutex> lock(mutexTargetVel_);
+    target_vel = TargetVel_;
   }
   
   if(Index_ == LV){	
@@ -217,24 +217,20 @@ void* ScaleTruckController::objectdetectInThread() {
 	    ResultVel_ = 0.0f;
 	  }
 	  else if (distance_ <= SafetyDist_){
-	    float TmpVel_ = (ResultVel_-SafetyVel_)*((distance_-LVstopDist_)/(SafetyDist_-LVstopDist_))+SafetyVel_;
-      if (TargetVel_ < TmpVel_){
-        ResultVel_ = TargetVel_;
-      }
-      else{
-        ResultVel_ = TmpVel_;
-      }
+	    float TmpVel_ = interpolateLinear(
+        distance_, LVstopDist_, SafetyDist_, SafetyVel_, ResultVel_);
+      ResultVel_ = std::min(target_vel, TmpVel_);
 	  }
 	  else{
-      ResultVel_ = TargetVel_;
+      ResultVel_ = target_vel;
 	  }
   }
   else{
-	  if ((distance_ <= FVstopDist_) || (TargetVel_ <= 0.1f)){
+	  if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)){
       // Emergency Brake
       ResultVel_ = 0.0f;
     } else {
-      ResultVel_ = TargetVel_;
+      ResultVel_ = target_vel;
 	  }
   }
 }
@@ -309,12 +305,12 @@ void ScaleTruckController::displayConsole() {
   printf("\nTar/Cur Vel     : %3.3f / %3.3f m/s", TargetVel_, CurVel_);
   printf("\nTar/Cur Dist    : %3.3f / %3.3f m", TargetDist_, distance_);
   printf("\nK1/K2           : %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
-  if(ObjCircles_ > 0) {
-    printf("\nCirs            : %d", ObjCircles_);
+  if(!Obstacles_.circles.empty()) {
+    printf("\nCircles         : %lu", Obstacles_.circles.size());
     printf("\nDistAng         : %2.3f degree", distAngle_);
   }
-  if(ObjSegments_ > 0) {
-    printf("\nSegs            : %d", ObjSegments_);
+  if(!Obstacles_.segments.empty()) {
+    printf("\nSegments        : %lu", Obstacles_.segments.size());
   }
   printf("\nCycle Time      : %3.3f ms", CycleTime_);
   printf("\n");
@@ -333,14 +329,10 @@ void ScaleTruckController::spin() {
     std::this_thread::sleep_for(wait_duration);
   }
   
-  scale_truck_control::xav2lrc msg;
-  scale_truck_control::lane_coef lane;
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
   
   const auto wait_image = std::chrono::milliseconds(20);
-
-  float TargetVel, TargetDist;
 
   while(!controlDone_ && ros::ok()) {
     struct timeval start_time, end_time;
@@ -350,21 +342,20 @@ void ScaleTruckController::spin() {
     
     lanedetect_thread.join();
     objectdetect_thread.join();
-    udpsendThread.join();
 
     if(enableConsoleOutput_)
       displayConsole();
 
+    scale_truck_control::xav2lrc msg;
     msg.steer_angle = AngleDegree_;
     msg.cur_dist = distance_;
     msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
     msg.tar_dist = TargetDist_;
     msg.beta = Beta_;
     msg.gamma = Gamma_;
-
-    lane = laneDetector_.lane_coef_;
-    LanecoefPublisher_.publish(lane);
     XavPublisher_.publish(msg);
+
+    LanecoefPublisher_.publish(laneDetector_.lane_coef_);
 
     if(!isNodeRunning()) {
       controlDone_ = true;
@@ -388,7 +379,7 @@ void ScaleTruckController::spin() {
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
   {
     boost::unique_lock<boost::shared_mutex> lockObjectCallback(mutexObjectCallback_);
-    Obstacle_ = msg;
+    Obstacles_ = msg;
   }
 }
 
@@ -418,6 +409,11 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
     boost::unique_lock<boost::shared_mutex> lockVelCallback(mutexVelCallback_);
     CurVel_ = msg.cur_vel;
   }	
+}
+
+void ScaleTruckController::guiTargetVelCallback(const std_msgs::Float32& target_vel) {
+  const std::lock_guard<std::mutex> lock(mutexTargetVel_);
+  TargetVel_ = target_vel.data;
 }
 
 } /* namespace scale_truck_control */ 
