@@ -38,7 +38,7 @@ public:
 private:
 	void LoadParams(void);
 	int arrMaxIdx(int hist[], int start, int end, int Max);
-	Mat polyfit(vector<int> x_val, vector<int> y_val);
+	Mat polyfit(const vector<int>& x_val, const vector<int>& y_val);
 	Mat warped_back_img(Mat _frame);
 	Mat warped_img(Mat _frame);
 	Mat detect_lines_sliding_window(Mat _frame, bool _view);
