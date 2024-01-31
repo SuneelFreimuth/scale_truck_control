@@ -314,10 +314,25 @@ void set_gear(int gear,Servo myservo){
 /*
    ANGLE to PWM
 */
-void setAngle(float angle) {
+void setANGLE() {
+  float angle = tx_steer_;
+
+  float center = 80.0f;
+  float output = center + angle;
+  /*CHRIS: changed this to simplify the output
+  to servo. The apparent trade-off is that we now have 180 postion
+  instead of 1000. I say apparent because other sources claim that
+  the write() function will do the math for us and call
+  writeMicroseconds() anyways.
+  
+  */
+  /*
   float output = (angle * 12.0) + (float)STEER_CENTER;
   output = limit(output, MIN_STEER, MAX_STEER);
   steer_.writeMicroseconds(output);
+  */
+ 
+  steer_.write(output);
 }
 /*
    RPM Check Function

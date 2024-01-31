@@ -239,6 +239,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 	int height = _frame.rows;
 
 	_frame.copyTo(frame);
+	
 	Mat nonZero;
 	findNonZero(frame, nonZero);
 
@@ -246,7 +247,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 	vector<int> good_right_inds;
 	int* hist = new int[width];
 
-	double* weight_distrib = new double[width];
+	double* weight_distrib = new double[width]; //no usage found
 	for (int i = 0; i < width; i++) {
 		hist[i] = 0;
 	}
@@ -470,7 +471,6 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 
 	return result;
 }
-
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
 	Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
 	trans = getPerspectiveTransform(warpCorners_, corners_);
@@ -726,7 +726,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 	gpu_map2.upload(map2_);
 
 	cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame, gpu_binary_frame;
-
+	cuda::GpuMat gpu_inverted_frame;
 	gpu_frame.upload(new_frame);
 	cuda::remap(gpu_frame, gpu_remap_frame, gpu_map1, gpu_map2, INTER_LINEAR);
 	gpu_remap_frame.download(new_frame);
@@ -736,8 +736,10 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 	filters->apply(gpu_warped_frame, gpu_blur_frame);
 	cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
 	cuda::threshold(gpu_gray_frame, gpu_binary_frame, threshold_, 255, THRESH_BINARY);
-	gpu_binary_frame.download(gray_frame);
-	
+	cuda::bitwise_not(gpu_binary_frame, gpu_inverted_frame);
+	//gpu_binary_frame.download(gray_frame);
+	gpu_inverted_frame.download(gray_frame);
+	//sliding_frame = detect_lines_sliding_window(gray_frame, _view);
 	sliding_frame = detect_lines_sliding_window(gray_frame, _view);
 	calc_curv_rad_and_center_dist();
 
