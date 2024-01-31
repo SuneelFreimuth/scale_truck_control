@@ -330,9 +330,6 @@ void setANGLE() {
   float output = (angle * 12.0) + (float)STEER_CENTER;
   output = limit(output, MIN_STEER, MAX_STEER);
   steer_.writeMicroseconds(output);
-  */
- 
-  steer_.write(output);
 }
 /*
    RPM Check Function
