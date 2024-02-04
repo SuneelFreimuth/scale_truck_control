@@ -157,31 +157,9 @@ bool ScaleTruckController::isNodeRunning(void){
 }
 
 void* ScaleTruckController::lanedetectInThread() {
-  static int cnt = 10;
-  Mat dst;
-  std::vector<Mat>channels;
-  int count = 0;
-  if((!camImageTmp_.empty()) && (cnt != 0) && (TargetVel_ != 0))
-  {
-    bitwise_xor(camImageCopy_,camImageTmp_, dst);
-    split(dst, channels);
-    for(int ch = 0; ch<dst.channels();ch++) {
-      count += countNonZero(channels[ch]);
-    }
-    // TODO: Why???
-    if(count == 0 && Beta_)
-      cnt -= 1;
-    else 
-      cnt = 10;
-  }
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
   AngleDegree_ = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
-  //if(cnt == 0){
-    //AngleDegree_ = -distAngle_;
-  //}
-  //else
-    //AngleDegree_ = AngleDegree;
 }
 
 void* ScaleTruckController::objectdetectInThread() {
@@ -221,18 +199,15 @@ void* ScaleTruckController::objectdetectInThread() {
 	  if(distance_ <= LVstopDist_) {
       // Emergency Brake
 	    ResultVel_ = 0.0f;
-	  }
-	  else if (distance_ <= SafetyDist_){
+	  } else if (distance_ <= SafetyDist_){
 	    float TmpVel_ = interpolateLinear(
         distance_, LVstopDist_, SafetyDist_, SafetyVel_, ResultVel_);
       ResultVel_ = std::min(target_vel, TmpVel_);
-	  }
-	  else{
+	  } else{
       ResultVel_ = target_vel;
 	  }
-  }
-  else{
-	  if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)){
+  } else {
+	  if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)) {
       // Emergency Brake
       ResultVel_ = 0.0f;
     } else {
@@ -293,8 +268,6 @@ void* ScaleTruckController::UDPrecvInThread() {
           Beta_ = udpData_.cf;
         }
 
-        //Gamma_
-
         TargetVel_ = udpData_.target_vel;
         TargetDist_ = udpData_.target_dist;
       }
@@ -323,9 +296,6 @@ void ScaleTruckController::displayConsole() {
 }
 
 void ScaleTruckController::spin() {
-  double diff_time=0.0;
-  int cnt = 0;
-  
   const auto wait_duration = std::chrono::milliseconds(2000);
   while(!getImageStatus()) {
     printf("Waiting for image.\n");
@@ -373,17 +343,6 @@ void ScaleTruckController::spin() {
       controlDone_ = true;
       ros::requestShutdown();
     }
-
-    gettimeofday(&end_time, NULL);
-    diff_time += ((end_time.tv_sec - start_time.tv_sec) * 1000.0) + ((end_time.tv_usec - start_time.tv_usec) / 1000.0);
-    cnt++;
-
-    CycleTime_ = diff_time / (double)cnt;
-
-    if (cnt > 3000){
-	    diff_time = 0.0;
-	    cnt = 0;
-    }
   }
 }
 
@@ -406,7 +365,7 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
     {
       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
       imageHeader_ = msg->header;
-      camImageCopy_ = cam_image->image.clone();
+      camImageCopy_    cam_image->image.clone();
     }
     {
       boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
