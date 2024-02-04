@@ -1,6 +1,9 @@
 #include "scale_truck_control/ScaleTruckController.hpp"
 
 #include <algorithm>
+#include <cmath>
+
+#include <std_msgs/Float32.h>
 
 using namespace std::string_literals;
 
@@ -8,6 +11,10 @@ namespace {
   // Linearly maps x from [min0, max0] to [min1, max1].
   float interpolateLinear(float x, float min0, float max0, float min1, float max1) {
     return min0 + (x - min0) / (max0 - min0) * (max1 - min1);
+  }
+
+  bool equalWithin(float a, float b, float err) {
+	return abs(a - b) < err;
   }
 }
 
@@ -87,7 +94,6 @@ void ScaleTruckController::init() {
   int objectQueueSize; 
   int XavSubQueueSize;
   int XavPubQueueSize;
-  int LanecoefQueueSize;
 
   /******************************/
   /* Ros Topic Subscribe Option */
@@ -99,7 +105,6 @@ void ScaleTruckController::init() {
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
-  nodeHandle_.param("publishers/lane_coef/queue_size", LanecoefQueueSize, 10);
   nodeHandle_.param("lrcSubPub/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
 
   /************************/
@@ -107,7 +112,8 @@ void ScaleTruckController::init() {
   /************************/
   imageSubscriber_ = nodeHandle_.subscribe("/usb_cam/image_raw", imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe("/raw_obstacles", objectQueueSize, &ScaleTruckController::objectCallback, this);
-  XavSubscriber_ = nodeHandle_.subscribe("/lrc2xav", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
+  // TODO: Reintegrate LRC
+  // XavSubscriber_ = nodeHandle_.subscribe("/lrc2xav", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   auto gui_target_vel_topic = "/gui_targets/"s + std::to_string(Index_) + "/target_vel"s;
   sub_gui_target_vel = nodeHandle_.subscribe(gui_target_vel_topic, 50, &ScaleTruckController::guiTargetVelCallback, this);
   
@@ -115,7 +121,7 @@ void ScaleTruckController::init() {
   /* Ros Topic Publisher */
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
-  LanecoefPublisher_ = nodeHandle_.advertise<scale_truck_control::lane_coef>("/lane_msg", LanecoefQueueSize);
+  xavToOcrPublisher_ = nodeHandle_.advertise<std_msgs::Float32>("/xav2ocr", 20);
 
   /*****************/
   /* UDP Multicast */
@@ -170,12 +176,12 @@ void* ScaleTruckController::lanedetectInThread() {
   }
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
-  float AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
-  if(cnt == 0){
-    AngleDegree_ = -distAngle_;
-  }
-  else
-    AngleDegree_ = AngleDegree;
+  AngleDegree_ = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
+  //if(cnt == 0){
+    //AngleDegree_ = -distAngle_;
+  //}
+  //else
+    //AngleDegree_ = AngleDegree;
 }
 
 void* ScaleTruckController::objectdetectInThread() {
@@ -346,16 +352,22 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
-    scale_truck_control::xav2lrc msg;
-    msg.steer_angle = AngleDegree_;
-    msg.cur_dist = distance_;
-    msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
-    msg.tar_dist = TargetDist_;
-    msg.beta = Beta_;
-    msg.gamma = Gamma_;
-    XavPublisher_.publish(msg);
+	if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
+	  std::cout << "Sending " << AngleDegree_ << std::endl;
+      std_msgs::Float32 msg;
+      msg.data = AngleDegree_;
+      xavToOcrPublisher_.publish(msg);
+      lastTxSteerAngle_ = AngleDegree_;
+    }
 
-    LanecoefPublisher_.publish(laneDetector_.lane_coef_);
+    // scale_truck_control::xav2lrc msg;
+    // msg.steer_angle = AngleDegree_;
+    // msg.cur_dist = distance_;
+    // msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
+    // msg.tar_dist = TargetDist_;
+    // msg.beta = Beta_;
+    // msg.gamma = Gamma_;
+    // XavPublisher_.publish(msg);
 
     if(!isNodeRunning()) {
       controlDone_ = true;
@@ -368,7 +380,6 @@ void ScaleTruckController::spin() {
 
     CycleTime_ = diff_time / (double)cnt;
 
-    printf("cnt: %d\n", cnt);
     if (cnt > 3000){
 	    diff_time = 0.0;
 	    cnt = 0;

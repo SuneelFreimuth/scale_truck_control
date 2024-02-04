@@ -43,12 +43,16 @@ namespace scale_truck_control {
 
 class ScaleTruckController {
   public:
+
     explicit ScaleTruckController(ros::NodeHandle nh);
 
     ~ScaleTruckController();
 
     void spin();
+
   private:
+    static constexpr float STEER_ANGLE_TOLERANCE = 0.5f;
+
     bool readParameters();
 
     void init();
@@ -60,7 +64,8 @@ class ScaleTruckController {
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
-    ros::Publisher LanecoefPublisher_;
+    ros::Publisher xavToOcrPublisher_;
+
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
@@ -83,7 +88,11 @@ class ScaleTruckController {
     int sync_flag_;
     bool Beta_ = false;
 
+    // If AngleDegree_ is not within STEER_ANGLE_TOLERANCE
+    // of lastTxSteerAngle, it will not be broadcast to the
+    // low-level controller to save on bandwidth.
     float AngleDegree_; // -1 ~ 1  - Twist msg angular.z
+	float lastTxSteerAngle_;
     float TargetVel_; // -1 ~ 1  - Twist msg linear.x
     float SafetyVel_;
     float ResultVel_;
