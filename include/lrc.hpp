@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <string>
 
-#include "sock_udp/sock_udp.hpp"
+#include "sock_udp.hpp"
 
 #include <scale_truck_control/xav2lrc.h>
 #include <scale_truck_control/ocr2lrc.h>

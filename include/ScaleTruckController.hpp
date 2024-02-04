@@ -29,13 +29,13 @@
 //OpenCV
 #include <cv_bridge/cv_bridge.h>
 
-#include "lane_detect/lane_detect.hpp"
+#include "lane_detect.hpp"
 
 //custom msgs
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
 
-#include "sock_udp/sock_udp.hpp"
+#include "sock_udp.hpp"
 
 #include "common.hpp"
 

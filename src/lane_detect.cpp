@@ -1,4 +1,4 @@
-#include "lane_detect/lane_detect.hpp"
+#include "lane_detect.hpp"
 
 #include <cassert>
 
@@ -455,7 +455,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 }
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
 	Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
-	if ((!left_coef.empty()) && (!right_coef.empty()))
+	if (left_coef.empty() || right_coef.empty())
 		return _frame;
 
 	trans = getPerspectiveTransform(warpCorners_, corners_);

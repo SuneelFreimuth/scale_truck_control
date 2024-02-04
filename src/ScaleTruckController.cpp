@@ -1,4 +1,4 @@
-#include "scale_truck_control/ScaleTruckController.hpp"
+#include "ScaleTruckController.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -323,7 +323,6 @@ void ScaleTruckController::spin() {
       displayConsole();
 
 	if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
-	  std::cout << "Sending " << AngleDegree_ << std::endl;
       std_msgs::Float32 msg;
       msg.data = AngleDegree_;
       xavToOcrPublisher_.publish(msg);
@@ -365,7 +364,7 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
     {
       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
       imageHeader_ = msg->header;
-      camImageCopy_    cam_image->image.clone();
+      camImageCopy_ = cam_image->image.clone();
     }
     {
       boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);

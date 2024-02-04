@@ -1,4 +1,4 @@
-#include "lrc/lrc.hpp"
+#include "lrc.hpp"
 
 #define PATH "/home/avees/catkin_ws/logfiles/"
 

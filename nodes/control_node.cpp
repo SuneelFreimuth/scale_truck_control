@@ -1,4 +1,4 @@
-#include <scale_truck_control/ScaleTruckController.hpp>
+#include <ScaleTruckController.hpp>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "scale_truck_control_node");
