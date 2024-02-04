@@ -27,16 +27,22 @@
 #define EN_PINB       (2)
 
 // Encoder
+constexpr int COUNTS_PER_REV = 180;
 constexpr float WHEEL_DIA = (0.085); // m
 constexpr float WHEEL_CIRCUM = WHEEL_DIA * PI;
+
+constexpr float MIN_STEER_ANGLE = -26;
+constexpr float MAX_STEER_ANGLE = 26;
+constexpr int MIN_STEER_PWM = 1000;
+constexpr int MAX_STEER_PWM = 2000;
+
+
 #define TICK2CYCLE    (60) // (65) // 65 ticks(EN_pos_) = 1 wheel cycle
 #define MAX_SPEED     (2)  // m/s
 #define MAX_PWM       (2000)
 #define MIN_PWM       (1600)
 #define ZERO_PWM      (1500)
-#define MAX_STEER     (1800)
-#define MIN_STEER     (1200)
-#define STEER_CENTER  (1480)
+
 
 // Enable VEBBOSE
 #define DATA_LOG      (0)
@@ -47,6 +53,15 @@ float limit(float x, float min, float max) {
   if (x > max)
     return max;
   return x;
+}
+
+float mapLinear(float x, float min0, float max0, float min1, float max1) {
+  return min1 + (max1 - min1) * (x - min0) / (max0 - min0);
+}
+
+int steerAngleToPwm(float steer_angle) {
+  return mapLinear(steer_angle, MIN_STEER_ANGLE, MAX_STEER_ANGLE,
+    MIN_STEER_PWM, MAX_STEER_PWM);
 }
 
 // Interfaces with a quadrature encoder, counting on every
@@ -163,10 +178,10 @@ constexpr float Ki_ = 2.0; // 0.4; //10.0;
 constexpr float Ka_ = 0.01;
 constexpr float Kf_ = 1.0;  // feed forward const.
 constexpr float dt_ = 0.1;
-constexpr float circ_ = WHEEL_DIM * M_PI;
+constexpr float circ_ = WHEEL_DIA * M_PI;
 
 scale_truck_control::ocr2lrc pub_msg_;
-std_msgs::String string_msg;
+std_msgs::String log_msg;
 std_msgs::Float32 pwm_msg;
 std_msgs::Float32 cur_vel_msg;
 std_msgs::Float32 tar_vel_msg;
@@ -174,13 +189,15 @@ std_msgs::Float32 tar_vel_msg;
 ros::NodeHandle nh_;
 
 void LrcCallback(const scale_truck_control::lrc2ocr &msg);
+void Xav2OcrCallback(const std_msgs::Float32& msg);
 void resetSystem(const std_msgs::Empty&);
 
+ros::Subscriber<std_msgs::Float32> subXav2Ocr("/xav2ocr", &Xav2OcrCallback, 10);
 ros::Subscriber<scale_truck_control::lrc2ocr> rosSubMsg("/lrc2ocr_msg", &LrcCallback);
 ros::Subscriber<std_msgs::Empty> sub_reset("/low_level_reset", &resetSystem);
 
 ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
-ros::Publisher pub_log("/low_level_log", &string_msg);
+ros::Publisher pub_log("/low_level_log", &log_msg);
 ros::Publisher pub_pwm("/low_level_pwm", &pwm_msg);
 ros::Publisher pub_cur_vel("/low_level_cur_vel", &cur_vel_msg);
 ros::Publisher pub_tar_vel("/low_level_tar_vel", &tar_vel_msg);
@@ -210,11 +227,6 @@ struct PidController {
   }
 
   float setSpeed(float tar_vel, float cur_vel) {
-    char text[256];
-    snprintf(text, 256, "Target vel: %.3f, Current vel: %.3f", tar_vel, cur_vel);
-    string_msg.data = text;
-    pub_log.publish(&string_msg);
-
     float u, u_k;
     float u_dist, u_dist_k;
     float ref_vel;
@@ -291,6 +303,18 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   Alpha_ = msg.alpha;
 }
 
+void Xav2OcrCallback(const std_msgs::Float32& msg) {
+  float steer_angle = limit(msg.data, MIN_STEER_ANGLE, MAX_STEER_ANGLE);
+  int pwm = steerAngleToPwm(steer_angle);
+  
+  char log[256];
+  snprintf(log, 256, "Steer angle: %.3f, Pulse width: %d", steer_angle, pwm);
+  log_msg.data = log;
+  pub_log.publish(&log_msg);
+
+  steer_.writeMicroseconds(pwm);
+}
+
 PidController pid;
 
 void resetSystem(const std_msgs::Empty& _) {
@@ -317,8 +341,8 @@ void set_gear(int gear,Servo myservo){
 void setANGLE() {
   float angle = tx_steer_;
 
-  float center = 80.0f;
-  float output = center + angle;
+  // float center = 80.0f;
+  // float output = center + angle;
   /*CHRIS: changed this to simplify the output
   to servo. The apparent trade-off is that we now have 180 postion
   instead of 1000. I say apparent because other sources claim that
@@ -326,11 +350,21 @@ void setANGLE() {
   writeMicroseconds() anyways.
   
   */
-  /*
-  float output = (angle * 12.0) + (float)STEER_CENTER;
-  output = limit(output, MIN_STEER, MAX_STEER);
+  
+  // float output = (angle * 12.0) + (float)STEER_CENTER;
+  // output = limit(output, MIN_STEER, MAX_STEER);
+  // steer_.write(0);
+  angle = limit(angle, MIN_STEER_ANGLE, MAX_STEER_ANGLE);
+  int output = steerAngleToPwm(angle);
+  
+  char msg[256];
+  snprintf(msg, 256, "Steer angle: %.3f, PWM: %d", angle, output);
+  log_msg.data = msg;
+  pub_log.publish(&log_msg);
+
   steer_.writeMicroseconds(output);
 }
+
 /*
    RPM Check Function
 */
@@ -351,6 +385,7 @@ void onPinAChange() {
 void setup() {
   nh_.initNode();
   nh_.subscribe(rosSubMsg);
+  nh_.subscribe(subXav2Ocr);
   nh_.subscribe(sub_reset);
   nh_.advertise(rosPubMsg);
   nh_.advertise(pub_log);
@@ -365,9 +400,9 @@ void setup() {
   encoder.attachPins(onPinAChange);
 
   // set_gear(1,gear_);
-  pinMode(EN_PINA, INPUT);
-  pinMode(EN_PINB, INPUT);
-  attachInterrupt(EN_PINA, readEncoderA, CHANGE);
+  // pinMode(EN_PINA, INPUT);
+  // pinMode(EN_PINB, INPUT);
+  // attachInterrupt(EN_PINA, readEncoderA, CHANGE);
   // Serial.begin(BAUD_RATE);
   if(!SD.begin(SD_PIN)){
     // Serial.println("Card failed, or not present");
@@ -385,11 +420,11 @@ void setup() {
     // Serial.print(filename_);
     logfile_.close();
   }
-  // Serial.print("here");
-  Timer_1.begin(CountT, T_TIME);
-  Timer_2.begin(calcAndApplyThrottle, CYCLE_TIME);
-  Timer_3.begin(setANGLE, ANGLE_TIME);
-  // Serial.print("[OpenCR] setup()");
+
+  // Timer_1.begin(CountT, T_TIME);
+  Timer_1.begin(calcAndApplyThrottle, CYCLE_TIME);
+  // Timer_3.begin(setANGLE, ANGLE_TIME);
+
   tx_tar_vel = 0.0;
   tx_steer_ = 0.0;
 }
