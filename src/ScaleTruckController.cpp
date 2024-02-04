@@ -31,7 +31,7 @@ ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
 
 ScaleTruckController::~ScaleTruckController() {
   {
-    boost::unique_lock<boost::shared_mutex> lockNodeStatus(mutexNodeStatus_);
+    std::lock_guard<std::mutex> lockNodeStatus(mutexNodeStatus_);
     isNodeRunning_ = false;
   }
 
@@ -147,12 +147,12 @@ void ScaleTruckController::init() {
 }
 
 bool ScaleTruckController::getImageStatus(void){
-  boost::shared_lock<boost::shared_mutex> lock(mutexImageStatus_);
+  std::lock_guard<std::mutex> lock(mutexImageStatus_);
   return imageStatus_;
 }
 
 bool ScaleTruckController::isNodeRunning(void){
-  boost::shared_lock<boost::shared_mutex> lock(mutexNodeStatus_);
+  std::lock_guard<std::mutex> lock(mutexNodeStatus_);
   return isNodeRunning_;
 }
 
@@ -264,7 +264,7 @@ void* ScaleTruckController::UDPrecvInThread() {
         sync_flag_ = udpData_.sync;
 
         {
-          boost::shared_lock<boost::shared_mutex> lock(mutexCamStatus_);
+          std::lock_guard<std::mutex> lock(mutexCamStatus_);
           Beta_ = udpData_.cf;
         }
 
@@ -296,23 +296,19 @@ void ScaleTruckController::displayConsole() {
 }
 
 void ScaleTruckController::spin() {
-  const auto wait_duration = std::chrono::milliseconds(2000);
+  const auto wait_duration = std::chrono::milliseconds(200);
+  printf("Waiting for image...\n");
   while(!getImageStatus()) {
-    printf("Waiting for image.\n");
-    if(!isNodeRunning()) {
+    if(!isNodeRunning())
       return;
-    }
     std::this_thread::sleep_for(wait_duration);
   }
+  printf("Image received.\n");
   
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
-  
-  const auto wait_image = std::chrono::milliseconds(20);
 
   while(!controlDone_ && ros::ok()) {
-    struct timeval start_time, end_time;
-    gettimeofday(&start_time, NULL);
     lanedetect_thread = std::thread(&ScaleTruckController::lanedetectInThread, this);
     objectdetect_thread = std::thread(&ScaleTruckController::objectdetectInThread, this);
     
@@ -329,15 +325,6 @@ void ScaleTruckController::spin() {
       lastTxSteerAngle_ = AngleDegree_;
     }
 
-    // scale_truck_control::xav2lrc msg;
-    // msg.steer_angle = AngleDegree_;
-    // msg.cur_dist = distance_;
-    // msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
-    // msg.tar_dist = TargetDist_;
-    // msg.beta = Beta_;
-    // msg.gamma = Gamma_;
-    // XavPublisher_.publish(msg);
-
     if(!isNodeRunning()) {
       controlDone_ = true;
       ros::requestShutdown();
@@ -347,7 +334,7 @@ void ScaleTruckController::spin() {
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
   {
-    boost::unique_lock<boost::shared_mutex> lockObjectCallback(mutexObjectCallback_);
+    std::lock_guard<std::mutex> lockObjectCallback(mutexObjectCallback_);
     Obstacles_ = msg;
   }
 }
@@ -362,12 +349,12 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 
   if(cam_image && !Beta_) {
     {
-      boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
+      std::lock_guard<std::mutex> lockImageCallback(mutexImageCallback_);
       imageHeader_ = msg->header;
       camImageCopy_ = cam_image->image.clone();
     }
     {
-      boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
+      std::lock_guard<std::mutex> lockImageStatus(mutexImageStatus_);
       imageStatus_ = true;
     }
   }
@@ -375,7 +362,7 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 
 void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
   {
-    boost::unique_lock<boost::shared_mutex> lockVelCallback(mutexVelCallback_);
+    std::lock_guard<std::mutex> lockVelCallback(mutexVelCallback_);
     CurVel_ = msg.cur_vel;
   }	
 }

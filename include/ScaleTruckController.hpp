@@ -13,7 +13,6 @@
 #include <pthread.h>
 #include <thread>
 #include <chrono>
-#include <boost/thread/thread.hpp>
 #include <vector>
 #include <sys/time.h>
 #include <string>
@@ -115,24 +114,24 @@ class ScaleTruckController {
     std::mutex mutex_;
 
     obstacle_detector::Obstacles Obstacles_;
-    boost::shared_mutex mutexObjectCallback_;
+    std::mutex mutexObjectCallback_;
 
     std_msgs::Header imageHeader_;
     cv::Mat camImageCopy_, camImageTmp_;
-    boost::shared_mutex mutexImageCallback_;
+    std::mutex mutexImageCallback_;
 
     float CurVel_;
     float RefVel_;
-    boost::shared_mutex mutexVelCallback_;
+    std::mutex mutexVelCallback_;
 
     bool imageStatus_ = false;
-    boost::shared_mutex mutexImageStatus_;
+    std::mutex mutexImageStatus_;
 
     bool isNodeRunning_ = true;
-    boost::shared_mutex mutexNodeStatus_;
+    std::mutex mutexNodeStatus_;
 	
     //bool cam_failure_ = false;
-    boost::shared_mutex mutexCamStatus_;
+    std::mutex mutexCamStatus_;
 
     bool controlDone_ = false;
      

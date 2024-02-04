@@ -6,17 +6,8 @@ project(scale_truck_control)
 set(ENABLE_DRAFT ON)
 
 set(OpenCV_DIR /usr/local/lib/cmake/opencv4/)
-#set(BOOST_ROOT /usr/include/boost/)
-#include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-#message("OpenCV_DIR=${OpenCV_INCLUDE_DIRS}")
-#message("catkin_DIR=${catkin_INCLUDE_DIRS}")
 
 find_package(OpenCV 4.4.0 REQUIRED)
-
-find_package(Boost REQUIRED python
-  COMPONENTS
-    thread
-)
 
 find_package(catkin REQUIRED
   COMPONENTS
@@ -57,15 +48,12 @@ catkin_package(
     std_msgs
     geometry_msgs
     obstacle_detector
-  DEPENDS
-    Boost
 )
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
 )
 
 set(PROJECT_LIB_FILES
@@ -98,7 +86,6 @@ target_link_libraries(${PROJECT_NAME}_lib
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
-  ${Boost_LIBRARIES}
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -122,7 +109,6 @@ target_link_libraries(LRC_lib
   pthread
   stdc++
   ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
 )
 
 target_link_libraries(LRC
