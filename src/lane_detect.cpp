@@ -30,21 +30,21 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 
     	/******* Camera  calibration *******/
 	double matrix[9], dist_coef[5];
-	nodeHandle_.param("Calibration/matrix/a",matrix[0], 3.2918100682757097e+02);
-	nodeHandle_.param("Calibration/matrix/b",matrix[1], 0.);
-	nodeHandle_.param("Calibration/matrix/c",matrix[2], 320.);
-	nodeHandle_.param("Calibration/matrix/d",matrix[3], 0.);
-	nodeHandle_.param("Calibration/matrix/e",matrix[4], 3.2918100682757097e+02);
-	nodeHandle_.param("Calibration/matrix/f",matrix[5], 240.);
-	nodeHandle_.param("Calibration/matrix/g",matrix[6], 0.);
-	nodeHandle_.param("Calibration/matrix/h",matrix[7], 0.);
-	nodeHandle_.param("Calibration/matrix/i",matrix[8], 1.);
+	nodeHandle_.param("lane_detector/calibration/matrix/a",matrix[0], 3.2918100682757097e+02);
+	nodeHandle_.param("lane_detector/calibration/matrix/b",matrix[1], 0.);
+	nodeHandle_.param("lane_detector/calibration/matrix/c",matrix[2], 320.);
+	nodeHandle_.param("lane_detector/calibration/matrix/d",matrix[3], 0.);
+	nodeHandle_.param("lane_detector/calibration/matrix/e",matrix[4], 3.2918100682757097e+02);
+	nodeHandle_.param("lane_detector/calibration/matrix/f",matrix[5], 240.);
+	nodeHandle_.param("lane_detector/calibration/matrix/g",matrix[6], 0.);
+	nodeHandle_.param("lane_detector/calibration/matrix/h",matrix[7], 0.);
+	nodeHandle_.param("lane_detector/calibration/matrix/i",matrix[8], 1.);
 
-	nodeHandle_.param("Calibration/dist_coef/a",dist_coef[0], -3.2566540239089398e-01);
-	nodeHandle_.param("Calibration/dist_coef/b",dist_coef[1], 1.1504807178349362e-01);
-	nodeHandle_.param("Calibration/dist_coef/c",dist_coef[2], 0.);
-	nodeHandle_.param("Calibration/dist_coef/d",dist_coef[3], 0.);
-	nodeHandle_.param("Calibration/dist_coef/e",dist_coef[4], -2.1908791800876997e-02);
+	nodeHandle_.param("lane_detector/calibration/dist_coef/a",dist_coef[0], -3.2566540239089398e-01);
+	nodeHandle_.param("lane_detector/calibration/dist_coef/b",dist_coef[1], 1.1504807178349362e-01);
+	nodeHandle_.param("lane_detector/calibration/dist_coef/c",dist_coef[2], 0.);
+	nodeHandle_.param("lane_detector/calibration/dist_coef/d",dist_coef[3], 0.);
+	nodeHandle_.param("lane_detector/calibration/dist_coef/e",dist_coef[4], -2.1908791800876997e-02);
 
 	Mat camera_matrix = Mat::eye(3, 3, CV_64FC1);
 	Mat dist_coeffs = Mat::zeros(1, 5, CV_64FC1);
@@ -61,8 +61,8 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 	right_coef_ = Mat::zeros(3, 1, CV_32F);
 	center_coef_ = Mat::zeros(3, 1, CV_32F);
 
-	nodeHandle_.param("ROI/width", width_, 640);
-	nodeHandle_.param("ROI/height", height_, 480);
+	nodeHandle_.param("lane_detector/roi/width", width_, 640);
+	nodeHandle_.param("lane_detector/roi/height", height_, 480);
 	center_position_ = width_/2;
 
 	e_values_.resize(3);
@@ -72,16 +72,16 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 
 	float t_gap, b_gap, t_height, b_height, f_extra, b_extra;
 	int top_gap, bot_gap, top_height, bot_height, extra, extra_up, extra_down;
-	nodeHandle_.param("ROI/top_gap",t_gap, 0.336f);
-	nodeHandle_.param("ROI/bot_gap",b_gap, 0.078f);
-	nodeHandle_.param("ROI/top_height",t_height, 0.903f);
-	nodeHandle_.param("ROI/bot_height",b_height, 0.528f);
-	nodeHandle_.param("ROI/extra_f",f_extra, 0.0f);
-	nodeHandle_.param("ROI/extra_b",b_extra, 0.0f);
-	nodeHandle_.param("ROI/extra_up",extra_up, 0);
-	nodeHandle_.param("ROI/extra_down",extra_down, 0);
-	nodeHandle_.param("ROI/dynamic_roi",option_, true);
-	nodeHandle_.param("ROI/threshold",threshold_, 128);
+	nodeHandle_.param("lane_detector/roi/top_gap",t_gap, 0.336f);
+	nodeHandle_.param("lane_detector/roi/bot_gap",b_gap, 0.078f);
+	nodeHandle_.param("lane_detector/roi/top_height",t_height, 0.903f);
+	nodeHandle_.param("lane_detector/roi/bot_height",b_height, 0.528f);
+	nodeHandle_.param("lane_detector/roi/extra_f",f_extra, 0.0f);
+	nodeHandle_.param("lane_detector/roi/extra_b",b_extra, 0.0f);
+	nodeHandle_.param("lane_detector/roi/extra_up",extra_up, 0);
+	nodeHandle_.param("lane_detector/roi/extra_down",extra_down, 0);
+	nodeHandle_.param("lane_detector/roi/dynamic_roi",option_, true);
+	nodeHandle_.param("lane_detector/roi/threshold",threshold_, 128);
 	distance_ = 0;
 	top_gap = width_ * t_gap; 
 	bot_gap = width_ * b_gap;
@@ -104,17 +104,17 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 	warpCorners_[3] = Point2f(width_ - wide_extra_downside_, height_);
 
 	/* Lateral Control coefficient */
-	nodeHandle_.param("params/K", K_, 0.15f);
-	nodeHandle_.param("params/a/a", a_[0], 0.);
-	nodeHandle_.param("params/a/b", a_[1], -0.37169);
-	nodeHandle_.param("params/a/c", a_[2], 1.2602);
-	nodeHandle_.param("params/a/d", a_[3], -1.5161);
-	nodeHandle_.param("params/a/e", a_[4], 0.70696);
-	nodeHandle_.param("params/b/a", b_[0], 0.);
-	nodeHandle_.param("params/b/b", b_[1], -1.7536);
-	nodeHandle_.param("params/b/c", b_[2], 5.0931);
-	nodeHandle_.param("params/b/d", b_[3], -4.9047);
-	nodeHandle_.param("params/b/e", b_[4], 1.6722);
+	nodeHandle_.param("lane_detector/K", K_, 0.15f);
+	nodeHandle_.param("lane_detector/a/a", a_[0], 0.);
+	nodeHandle_.param("lane_detector/a/b", a_[1], -0.37169);
+	nodeHandle_.param("lane_detector/a/c", a_[2], 1.2602);
+	nodeHandle_.param("lane_detector/a/d", a_[3], -1.5161);
+	nodeHandle_.param("lane_detector/a/e", a_[4], 0.70696);
+	nodeHandle_.param("lane_detector/b/a", b_[0], 0.);
+	nodeHandle_.param("lane_detector/b/b", b_[1], -1.7536);
+	nodeHandle_.param("lane_detector/b/c", b_[2], 5.0931);
+	nodeHandle_.param("lane_detector/b/d", b_[3], -4.9047);
+	nodeHandle_.param("lane_detector/b/e", b_[4], 1.6722);
 
 	LoadParams();
 }
@@ -124,11 +124,11 @@ LaneDetector::~LaneDetector(void) {
 }
 
 void LaneDetector::LoadParams(void){
-	nodeHandle_.param("LaneDetector/eL_height",eL_height_, 1.0f);	
-	nodeHandle_.param("LaneDetector/e1_height",e1_height_, 1.0f);	
-	nodeHandle_.param("LaneDetector/trust_height",trust_height_, 1.0f);	
-	nodeHandle_.param("LaneDetector/lp",lp_, 756.0f);	
-	nodeHandle_.param("LaneDetector/steer_angle",SteerAngle_, 0.0f);
+	nodeHandle_.param("lane_detector/eL_height",eL_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/e1_height",e1_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/trust_height",trust_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/lp",lp_, 756.0f);	
+	nodeHandle_.param("lane_detector/steer_angle",SteerAngle_, 0.0f);
 }
 
 Mat LaneDetector::warped_img(Mat _frame) {

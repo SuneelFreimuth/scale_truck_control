@@ -1,18 +1,6 @@
 // FV1
 truck_index: 1
 
-tcp_ip:
-  sub_port: "5555"
-  pub_port: "5555"
-  req_port: "4444"
-  rep_port: "4444"
-  zipcode: "00001"
-
-udp_ip:
-  port: "8080"
-  send_group: "FV2"
-  recv_group: "FV1"
-
 socket:
   rad_flag: true
   dsh_flag: true

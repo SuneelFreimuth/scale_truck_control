@@ -34,8 +34,6 @@
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
 
-#include "sock_udp.hpp"
-
 #include "common.hpp"
 
 class ScaleTruckController {
@@ -68,19 +66,10 @@ class ScaleTruckController {
     ros::Subscriber XavSubscriber_;
 	  ros::Subscriber sub_gui_target_vel;
  
-    UDPsock::UDPsocket UDPsend_;
-    UDPsock::UDPsocket UDPrecv_;
-    std::string ADDR_;
-    
-    int PORT_;
-    struct UDPsock::UDP_DATA udpData_;
-	
     TruckIndex Index_;
     double CycleTime_ = 0.0;
     //image
-    LaneDetect::LaneDetector laneDetector_;
-    bool viewImage_;
-    int waitKeyDelay_;
+    LaneDetector laneDetector_;
     bool enableConsoleOutput_;
     int sync_flag_;
     bool Beta_ = false;
@@ -107,8 +96,6 @@ class ScaleTruckController {
 
     //Thread
     std::thread controlThread_;
-    std::thread udpsendThread_;
-    std::thread udprecvThread_;
     std::mutex mutex_;
 
     obstacle_detector::Obstacles Obstacles_;
@@ -138,7 +125,5 @@ class ScaleTruckController {
 	
     void* lanedetectInThread();
     void* objectdetectInThread();
-    void* UDPsendInThread();
-    void* UDPrecvInThread();
     void displayConsole();
 };

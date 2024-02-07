@@ -14,12 +14,12 @@ namespace {
   }
 
   bool equalWithin(float a, float b, float err) {
-	return abs(a - b) < err;
+    return abs(a - b) < err;
   }
 }
 
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
-    : nodeHandle_(nh), laneDetector_(nodeHandle_), UDPsend_(), UDPrecv_() {
+    : nodeHandle_(nh), laneDetector_(nodeHandle_) {
   if (!readParameters()) {
     ros::requestShutdown();
   }
@@ -43,42 +43,29 @@ ScaleTruckController::~ScaleTruckController() {
 
   XavPublisher_.publish(msg);
   controlThread_.join();
-  udprecvThread_.join();
 
   ROS_INFO("[ScaleTruckController] Stop.");
 }
 
 bool ScaleTruckController::readParameters() {
   nodeHandle_.getParam("truck_index", (int&) Index_);
-
-  /***************/
-  /* View Option */
-  /***************/
-  nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
-  nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 1000);
-  nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, true);
+  nodeHandle_.param("control_node/enable_console_output", enableConsoleOutput_, true);
   
   /*******************/
   /* Velocity Option */
   /*******************/
-  nodeHandle_.param("params/target_vel", TargetVel_, 0.5f); // m/s
-  nodeHandle_.param("params/safety_vel", SafetyVel_, 0.3f); // m/s
-  nodeHandle_.param("params/fv_max_vel", FVmaxVel_, 0.8f); // m/s
-  nodeHandle_.param("params/ref_vel", RefVel_, 0.0f); // m/s
+  nodeHandle_.param("control_node/target_vel", TargetVel_, 0.5f); // m/s
+  nodeHandle_.param("control_node/safety_vel", SafetyVel_, 0.3f); // m/s
+  nodeHandle_.param("control_node/fv_max_vel", FVmaxVel_, 0.8f); // m/s
+  nodeHandle_.param("control_node/ref_vel", RefVel_, 0.0f); // m/s
   
   /*******************/
   /* Distance Option */
   /*******************/
-  nodeHandle_.param("params/lv_stop_dist", LVstopDist_, 0.5f); // m
-  nodeHandle_.param("params/fv_stop_dist", FVstopDist_, 0.5f); // m
-  nodeHandle_.param("params/safety_dist", SafetyDist_, 1.5f); // m
-  nodeHandle_.param("params/target_dist", TargetDist_, 0.8f); // m
-
-  /**************/
-  /* UDP Option */
-  /**************/
-  nodeHandle_.param("params/udp_group_addr", ADDR_, std::string("239.255.255.250"));
-  nodeHandle_.param("params/udp_group_port", PORT_, 9307);
+  nodeHandle_.param("control_node/lv_stop_dist", LVstopDist_, 0.5f); // m
+  nodeHandle_.param("control_node/fv_stop_dist", FVstopDist_, 0.5f); // m
+  nodeHandle_.param("control_node/safety_dist", SafetyDist_, 1.5f); // m
+  nodeHandle_.param("control_node/target_dist", TargetDist_, 0.8f); // m
 
   return true;
 }
@@ -96,8 +83,8 @@ void ScaleTruckController::init() {
   /******************************/
   /* Ros Topic Subscribe Option */
   /******************************/
-  nodeHandle_.param("subscribers/camera_reading/queue_size", imageQueueSize, 1);
-  nodeHandle_.param("subscribers/obstacle_reading/queue_size", objectQueueSize, 100);
+  nodeHandle_.param("control_node/queue_sizes/sub_usb_cam_image_raw", imageQueueSize, 1);
+  nodeHandle_.param("control_node/queue_sizes/sub_raw_obstacles", objectQueueSize, 100);
   nodeHandle_.param("lrcSubPub/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
   
   /****************************/
@@ -120,17 +107,6 @@ void ScaleTruckController::init() {
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
   xavToOcrPublisher_ = nodeHandle_.advertise<std_msgs::Float32>("/xav2ocr", 20);
-
-  /*****************/
-  /* UDP Multicast */
-  /*****************/
-  // UDPsend_.GROUP_ = ADDR_.c_str();
-  // UDPsend_.PORT_ = PORT_;
-  // UDPsend_.sendInit();
-
-  // UDPrecv_.GROUP_ = ADDR_.c_str();
-  // UDPrecv_.PORT_ = PORT_;
-  // UDPrecv_.recvInit();
 
   /**********************************/
   /* Control & Communication Thread */
@@ -157,7 +133,7 @@ bool ScaleTruckController::isNodeRunning(void){
 void* ScaleTruckController::lanedetectInThread() {
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
-  AngleDegree_ = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, true);
+  AngleDegree_ = laneDetector_.display_img(camImageTmp_, 1000, true);
 }
 
 void* ScaleTruckController::objectdetectInThread() {
@@ -211,65 +187,6 @@ void* ScaleTruckController::objectdetectInThread() {
     } else {
       ResultVel_ = target_vel;
 	  }
-  }
-}
-
-void* ScaleTruckController::UDPsendInThread() {
-  struct UDPsock::UDP_DATA udpData;
-
-  udpData.index = Index_;
-  udpData.to = 307;
-  if(distance_ <= LVstopDist_ || TargetVel_ >= 2.0)
-    udpData.target_vel = 0;
-  else {
-    udpData.target_vel = RefVel_;
-  }
-  udpData.current_vel = CurVel_;
-  udpData.target_dist = TargetDist_;
-  udpData.current_dist = distance_;
-  udpData.current_angle = distAngle_;
-  udpData.roi_dist = laneDetector_.distance_;
-  udpData.coef[0].a = laneDetector_.lane_coef_.left.a;
-  udpData.coef[0].b = laneDetector_.lane_coef_.left.b;
-  udpData.coef[0].c = laneDetector_.lane_coef_.left.c;
-  udpData.coef[1].a = laneDetector_.lane_coef_.right.a;
-  udpData.coef[1].b = laneDetector_.lane_coef_.right.b;
-  udpData.coef[1].c = laneDetector_.lane_coef_.right.c;
-  udpData.coef[2].a = laneDetector_.lane_coef_.center.a;
-  udpData.coef[2].b = laneDetector_.lane_coef_.center.b;
-  udpData.coef[2].c = laneDetector_.lane_coef_.center.c;
-
-  UDPsend_.sendData(udpData);
-}
-
-void* ScaleTruckController::UDPrecvInThread() {
-	struct UDPsock::UDP_DATA udpData;
-
-  while(!controlDone_) { 
-    UDPrecv_.recvData(&udpData);
-    if(udpData.index == (Index_ - 1)) {
-      udpData_.target_vel = udpData.target_vel;
-      TargetVel_ = udpData_.target_vel;
-      TargetDist_ = udpData_.target_dist;
-    }
-    if(udpData.index == 307) {
-      if(udpData.to == Index_) {
-        udpData_.index = udpData.index;
-        udpData_.target_vel = udpData.target_vel;
-        udpData_.target_dist = udpData.target_dist;
-        udpData_.sync = udpData.sync;
-        udpData_.cf = udpData.cf;
-        sync_flag_ = udpData_.sync;
-
-        {
-          std::lock_guard<std::mutex> lock(mutexCamStatus_);
-          Beta_ = udpData_.cf;
-        }
-
-        TargetVel_ = udpData_.target_vel;
-        TargetDist_ = udpData_.target_dist;
-      }
-    }
   }
 }
 

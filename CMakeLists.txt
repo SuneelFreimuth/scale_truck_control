@@ -60,7 +60,6 @@ set(PROJECT_LIB_FILES
   src/lane_detect.cpp
   src/lrc.cpp
   src/ScaleTruckController.cpp
-  src/sock_udp.cpp
 )
 
 #
