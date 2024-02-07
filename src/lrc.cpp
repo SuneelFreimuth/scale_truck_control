@@ -4,8 +4,6 @@
 
 using namespace std;
 
-namespace LocalResiliencyCoordinator{
-
 LocalRC::LocalRC(ros::NodeHandle nh)
 	: nodeHandle_(nh), UDPsend_(), UDPrecv_(){
 	
@@ -270,6 +268,4 @@ void LocalRC::spin(){
 			break;
 		}
 	}
-}
-
 }

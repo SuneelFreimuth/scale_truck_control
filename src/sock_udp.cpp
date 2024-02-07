@@ -1,7 +1,5 @@
 #include "sock_udp.hpp"
 
-namespace UDPsock{
-
 UDPsocket::UDPsocket()
 {
     fd_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -77,5 +75,4 @@ int UDPsocket::sendData(struct UDP_DATA Data)
         perror("sendto");
         return 1;
     }
-}
 }

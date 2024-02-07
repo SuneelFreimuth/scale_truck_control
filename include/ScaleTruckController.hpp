@@ -38,8 +38,6 @@
 
 #include "common.hpp"
 
-namespace scale_truck_control {
-
 class ScaleTruckController {
   public:
 
@@ -144,5 +142,3 @@ class ScaleTruckController {
     void* UDPrecvInThread();
     void displayConsole();
 };
-
-} /* namespace scale_truck_control */

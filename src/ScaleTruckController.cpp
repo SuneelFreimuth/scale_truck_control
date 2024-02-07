@@ -18,8 +18,6 @@ namespace {
   }
 }
 
-namespace scale_truck_control{
-
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
     : nodeHandle_(nh), laneDetector_(nodeHandle_), UDPsend_(), UDPrecv_() {
   if (!readParameters()) {
@@ -371,5 +369,3 @@ void ScaleTruckController::guiTargetVelCallback(const std_msgs::Float32& target_
   const std::lock_guard<std::mutex> lock(mutexTargetVel_);
   TargetVel_ = target_vel.data;
 }
-
-} /* namespace scale_truck_control */ 

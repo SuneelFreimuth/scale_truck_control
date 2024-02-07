@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <opencv2/opencv.hpp>
 
-namespace UDPsock{
-
 struct lane_coef{
     float a;
     float b;
@@ -54,4 +52,3 @@ private:
     struct sockaddr_in addr_;
     struct ip_mreq mreq_;
 };
-}

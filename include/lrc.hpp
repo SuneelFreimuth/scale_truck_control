@@ -22,8 +22,6 @@
 
 using namespace std;
 
-namespace LocalResiliencyCoordinator{
-
 class LocalRC{
 	public:
 		LocalRC(ros::NodeHandle nh);
@@ -85,5 +83,3 @@ class LocalRC{
 		std::mutex mutexXavCallback_;
 		std::mutex mutexOcrCallback_;
 };
-
-}

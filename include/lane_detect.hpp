@@ -18,8 +18,6 @@
 using namespace cv;
 using namespace std;
 
-namespace LaneDetect {
-
 class LaneDetector{
 public:
 	LaneDetector(ros::NodeHandle nh);
@@ -91,5 +89,3 @@ private:
 	int threshold_;
 	double diff_;
 };
-
-}
