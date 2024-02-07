@@ -72,7 +72,7 @@ add_library(${PROJECT_NAME}_lib
 )
 
 add_executable(${PROJECT_NAME}
-  nodes/control_node.cpp
+  nodes/control.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -97,7 +97,7 @@ add_library(LRC_lib
 )
 
 add_executable(LRC
-  nodes/lrc_node.cpp
+  nodes/lrc.cpp
 )
 
 add_dependencies(LRC
