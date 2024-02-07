@@ -67,6 +67,7 @@ class ScaleTruckController {
 	  ros::Subscriber sub_gui_target_vel;
  
     TruckIndex Index_;
+    bool displayImage_;
     double CycleTime_ = 0.0;
     //image
     LaneDetector laneDetector_;

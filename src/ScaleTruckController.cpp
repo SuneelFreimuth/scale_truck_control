@@ -50,6 +50,7 @@ ScaleTruckController::~ScaleTruckController() {
 bool ScaleTruckController::readParameters() {
   nodeHandle_.getParam("truck_index", (int&) Index_);
   nodeHandle_.param("control_node/enable_console_output", enableConsoleOutput_, true);
+  nodeHandle_.param("control_node/enable_image_view", displayImage_, true);
   
   /*******************/
   /* Velocity Option */
@@ -58,10 +59,18 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("control_node/safety_vel", SafetyVel_, 0.3f); // m/s
   nodeHandle_.param("control_node/fv_max_vel", FVmaxVel_, 0.8f); // m/s
   nodeHandle_.param("control_node/ref_vel", RefVel_, 0.0f); // m/s
+  nodeHandle_.param("control_node/target_vel", TargetVel_, 0.5f); // m/s
+  nodeHandle_.param("control_node/safety_vel", SafetyVel_, 0.3f); // m/s
+  nodeHandle_.param("control_node/fv_max_vel", FVmaxVel_, 0.8f); // m/s
+  nodeHandle_.param("control_node/ref_vel", RefVel_, 0.0f); // m/s
   
   /*******************/
   /* Distance Option */
   /*******************/
+  nodeHandle_.param("control_node/lv_stop_dist", LVstopDist_, 0.5f); // m
+  nodeHandle_.param("control_node/fv_stop_dist", FVstopDist_, 0.5f); // m
+  nodeHandle_.param("control_node/safety_dist", SafetyDist_, 1.5f); // m
+  nodeHandle_.param("control_node/target_dist", TargetDist_, 0.8f); // m
   nodeHandle_.param("control_node/lv_stop_dist", LVstopDist_, 0.5f); // m
   nodeHandle_.param("control_node/fv_stop_dist", FVstopDist_, 0.5f); // m
   nodeHandle_.param("control_node/safety_dist", SafetyDist_, 1.5f); // m
@@ -85,12 +94,12 @@ void ScaleTruckController::init() {
   /******************************/
   nodeHandle_.param("control_node/queue_sizes/sub_usb_cam_image_raw", imageQueueSize, 1);
   nodeHandle_.param("control_node/queue_sizes/sub_raw_obstacles", objectQueueSize, 100);
-  nodeHandle_.param("lrcSubPub/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
+  nodeHandle_.param("lrc/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
   
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
-  nodeHandle_.param("lrcSubPub/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
+  nodeHandle_.param("lrc/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
 
   /************************/
   /* Ros Topic Subscriber */
@@ -133,7 +142,7 @@ bool ScaleTruckController::isNodeRunning(void){
 void* ScaleTruckController::lanedetectInThread() {
   camImageTmp_ = camImageCopy_.clone();
   laneDetector_.get_steer_coef(CurVel_);
-  AngleDegree_ = laneDetector_.display_img(camImageTmp_, 1000, true);
+  AngleDegree_ = laneDetector_.display_img(camImageTmp_, 1000, displayImage_);
 }
 
 void* ScaleTruckController::objectdetectInThread() {
@@ -233,7 +242,7 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
-	if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
+	  if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
       std_msgs::Float32 msg;
       msg.data = AngleDegree_;
       xavToOcrPublisher_.publish(msg);

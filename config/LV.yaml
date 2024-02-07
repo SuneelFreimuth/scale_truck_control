@@ -2,6 +2,7 @@
 truck_index: 0
 
 control_node:
+  enable_image_view: false
   target_vel: 0.00
   safety_vel: 0.45
   fv_max_vel: 1.20
