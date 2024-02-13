@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(scale_truck_control)
 
-#add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 17)
 
 set(ENABLE_DRAFT ON)
 
@@ -24,12 +24,13 @@ find_package(catkin REQUIRED
 
 add_message_files(
   FILES
-  lane_coef.msg
-  lane.msg
-  xav2lrc.msg
-  lrc2xav.msg
-  lrc2ocr.msg
-  ocr2lrc.msg
+    LaneCoefs.msg
+    lane_coef.msg
+    lane.msg
+    xav2lrc.msg
+    lrc2xav.msg
+    lrc2ocr.msg
+    ocr2lrc.msg
 )
 
 generate_messages(
@@ -114,3 +115,9 @@ target_link_libraries(LRC
   LRC_lib
 )
 
+catkin_install_python(
+  PROGRAMS
+    nodes/onnx_lane_detector.py
+  DESTINATION
+    ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
