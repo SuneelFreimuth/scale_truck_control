@@ -3,21 +3,24 @@
 [![Video Label](http://img.youtube.com/vi/wKmWD8BPldw/0.jpg)](https://youtu.be/wKmWD8BPldw?t=0s)
 
 ## I. Hardware
+
 * High-level Controller: Nvidia Jetson AGX Xavier 8GB
-* Low-level Controller: OpenCR 1.0 (ARM Cortex-M7)
+* Low-level Controller: Teensy 4.1 (ARM Cortex-M7)
 * USB Camera: ELP-USBFHD04H-BL180
 * Lidar: RPLidar A3
 
 ## II. Software
+
 High-level Controller
-* Jetpack: 4.5.1 version - Ubuntu 18.04 LTS
+* Jetpack 5.1.2, which is based on Ubuntu 20.04 LTS
 * OpenCV: 4.4.0 version - include options (GPU, CUDA, CUDNN)
-* ROS 1: melodic version
+* ROS Noetic Ninjemys
 
 Low-level Controller
-* ros-melodic-rosserial-arduino
+* ros-noetic-rosserial-arduino
 
 ## III. Demonstration
+
 Demonstration of a platoon with 3 trucks: https://www.youtube.com/watch?v=wKmWD8BPldw
 
 * Intro: 0:00
@@ -27,32 +30,37 @@ Demonstration of a platoon with 3 trucks: https://www.youtube.com/watch?v=wKmWD8
 * Emergency Stop: 2:45
 
 ## IV. Installation
-### Step 1: Install Jetpack 4.5.1 (ubuntu 18.04 LTS)
-If not done already, flash the Jetson with Nvidia Jetpack 4.5.1: https://developer.nvidia.com/embedded/jetpack
+
+### Step 1: Install Jetpack 5.1.2 (ubuntu 20.04 LTS)
+
+If not done already, flash the Jetson with Nvidia Jetpack 5.1.2: https://developer.nvidia.com/embedded/jetpack
+
+If the SDK components like CUDA were not installed automatically by Nvidia SDK Manager, then run the following upon logging into the Jetson:
+```
+sudo apt update
+sudo apt upgrade
+sudo apt install nvidia-jetpack
+```
+
+See [https://docs.nvidia.com/jetson/jetpack/install-jetpack/index.html#install-jetpack](the Nvidia documentation) for more details.
 
 ### Step 2: Build OpenCV 4.4.0 from Source
-If OpenCV has already been installed on the Jetson, run the following commands to remove it (not necessary if the Jetson has just been flashed with Jetpack):
-```
-sudo apt-get purge  libopencv* python-opencv
-sudo apt-get autoremove
-sudo find /usr/local/ -name "*opencv*" -exec rm -i {} \;
-```
 
 Run the following commands to install OpenCV's build dependencies:
 ```
-sudo apt-get update
-sudo apt-get upgrade
+sudo apt update
+sudo apt upgrade
 
-sudo apt-get -y install build-essential cmake
-sudo apt-get -y install pkg-config
-sudo apt-get -y install libjpeg-dev libtiff5-dev libpng-dev
-sudo apt-get -y install ffmpeg libavcodec-dev libavformat-dev libswscale-dev libxvidcore-dev libx264-dev libxine2-dev
-sudo apt-get -y install libv4l-dev v4l-utils
-sudo apt-get -y install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev 
-sudo apt-get -y install libgtk-3-dev
-sudo apt-get -y install mesa-utils libgl1-mesa-dri libgtkgl2.0-dev libgtkglext1-dev
-sudo apt-get -y install libatlas-base-dev gfortran libeigen3-dev
-sudo apt-get -y install python3-dev python3-numpy
+sudo apt install -y build-essential cmake
+sudo apt install -y pkg-config
+sudo apt install -y libjpeg-dev libtiff5-dev libpng-dev
+sudo apt install -y ffmpeg libavcodec-dev libavformat-dev libswscale-dev libxvidcore-dev libx264-dev libxine2-dev
+sudo apt install -y libv4l-dev v4l-utils
+sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev 
+sudo apt install -y libgtk-3-dev
+sudo apt install -y mesa-utils libgl1-mesa-dri libgtkgl2.0-dev libgtkglext1-dev
+sudo apt install -y libatlas-base-dev gfortran libeigen3-dev
+sudo apt install -y python3-dev python3-numpy
 ```
 
 Clone OpenCV 4.4.0 and OpenCV's extra modules:
@@ -70,7 +78,6 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
   -D WITH_OPENCL=OFF \
   -D WITH_CUDA=ON \
-  -D CUDA_ARCH_BIN=7.2 \
   -D CUDA_ARCH_PTX="" \
   -D WITH_CUDNN=ON \
   -D WITH_CUBLAS=ON \
@@ -97,7 +104,7 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D OPENCV_GENERATE_PKGCONFIG=ON \
   -D BUILD_EXAMPLES=OFF \
   ..
-sudo make install -j8
+sudo make install -j10
 ```
 
 Edit the pkg-config file for OpenCV:
@@ -122,7 +129,7 @@ Cflags: -I${includedir_old} -I${includedir_new}
 
 ### Step 3: Install jetson-stats
 ```
-sudo -H pip3 install jetson-stats
+sudo pip3 install -U jetson-stats
 jetson_release
 ```
 
@@ -135,37 +142,23 @@ sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main
 
 Add apt keys:
 ```
-sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
 ```
 
-Install ROS Melodic:
+Update to fetch the APT repository and install ROS Noetic:
 ```
-sudo apt install ros-melodic-desktop-full
+sudo apt update 
+sudo apt install ros-noetic-desktop-full
 ```
 
-ROS Melodic provides `setup.bash`, a script which configures the current shell's environment. Do one or both of the following:
+ROS Noetic provides `setup.bash`, a script which configures the current shell's environment. Do one or both of the following:
 ```
 # To update the environment on startup for every future shell session:
-echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
-
+echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
 
 # To update the environment for the current session:
-source /opt/ros/melodic/setup.bash
+source /opt/ros/noetic/setup.bash
 ```
-
-Install dependencies for either Python 2 or 3:
-* Python 2:
-    ```
-    sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential
-    sudo apt install python-rosdep
-    sudo rosdep init
-    rosdep update
-    ```
-* Python 3
-    ```
-    sudo apt-get install python3-pip python3-yaml
-    sudo pip3 install rospkg catkin_pkg
-    ```
 
 ### Step 5: Create a Catkin Workspace
 
@@ -176,18 +169,13 @@ cd ~/catkin_ws/
 catkin_make
 ```
 
-If using Python 3:
-```
-catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
-```
-
 ### Step 6: Clone scale_truck_control and Dependencies
 
 Enter `~/catkin_ws/src`, which was created in the last step, then clone scale_truck_control and each of its dependencies:
 ```
 cd ~/catkin_ws/src
 ```
-* scale_truck_control
+* [scale_truck_control](https://github.com/SuneelFreimuth/scale_truck_control.git)
     ```
     git clone https://github.com/SuneelFreimuth/scale_truck_control.git 
     ```
@@ -209,15 +197,15 @@ cd ~/catkin_ws/src
     ```
 * [laser_filters](https://github.com/ros-perception/laser_filters/)
     ```
-    git clone -b kinetic-devel https://github.com/ros-perception/laser_filters.git 
+    git clone -b noetic-devel https://github.com/ros-perception/laser_filters.git 
     ```
 * [vision_opencv](https://github.com/ros-perception/vision_opencv/) (vision_opencv, image_geometry, cv_bridge)
     ```
-    git clone -b melodic https://github.com/ros-perception/vision_opencv.git
+    git clone -b noetic https://github.com/ros-perception/vision_opencv.git
     ```
 
 vision_opencv requires the following modifications:
-* For `~/catkin_ws/src/vision_opencv/cv_bridge/CMakelist.txt`:
+* For `~/catkin_ws/src/vision_opencv/cv_bridge/CMakelists.txt`:
     ```
     --find_package(Boost REQUIRED python37)
     ++find_package(Boost REQUIRED python)
@@ -229,15 +217,9 @@ vision_opencv requires the following modifications:
     --return nullptr;
     ```
 
-Install rosserial-arduino for ROS Melodic for communication with the low-level controller:
+Install rosserial-arduino for ROS Noetic for communication with the low-level controller:
 ```
-sudo apt-get install ros-melodic-rosserial ros-melodic-rosserial-arduino
-```
-
-TODO: I believe the following is only necessary to run the GUI controller. Skip.
-```
-sudo apt-get install libarmadillo-dev
-sudo apt-get install qtbase5-dev 
+sudo apt install ros-noetic-rosserial ros-noetic-rosserial-arduino
 ```
 
 Finally, to build scale_truck_control, enter the Catkin workspace and run `catkin_make`:

@@ -5,13 +5,7 @@ project(scale_truck_control)
 
 set(ENABLE_DRAFT ON)
 
-set(OpenCV_DIR /usr/local/lib/cmake/opencv4/)
-#set(BOOST_ROOT /usr/include/boost/)
-#include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-#message("OpenCV_DIR=${OpenCV_INCLUDE_DIRS}")
-#message("catkin_DIR=${catkin_INCLUDE_DIRS}")
-
-find_package(OpenCV 4.4.0 REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 
 find_package(Boost REQUIRED python
   COMPONENTS
