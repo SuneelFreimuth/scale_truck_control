@@ -1,22 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(scale_truck_control)
 
-#add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 17)
 
 set(ENABLE_DRAFT ON)
 
-set(OpenCV_DIR /usr/local/lib/cmake/opencv4/)
-#set(BOOST_ROOT /usr/include/boost/)
-#include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-#message("OpenCV_DIR=${OpenCV_INCLUDE_DIRS}")
-#message("catkin_DIR=${catkin_INCLUDE_DIRS}")
-
-find_package(OpenCV 4.4.0 REQUIRED)
-
-find_package(Boost REQUIRED python
-  COMPONENTS
-    thread
-)
+find_package(OpenCV 4 REQUIRED)
 
 find_package(catkin REQUIRED
   COMPONENTS
@@ -33,12 +22,13 @@ find_package(catkin REQUIRED
 
 add_message_files(
   FILES
-  lane_coef.msg
-  lane.msg
-  xav2lrc.msg
-  lrc2xav.msg
-  lrc2ocr.msg
-  ocr2lrc.msg
+    LaneCoefs.msg
+    lane_coef.msg
+    lane.msg
+    xav2lrc.msg
+    lrc2xav.msg
+    lrc2ocr.msg
+    ocr2lrc.msg
 )
 
 generate_messages(
@@ -57,22 +47,18 @@ catkin_package(
     std_msgs
     geometry_msgs
     obstacle_detector
-  DEPENDS
-    Boost
 )
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
 )
 
 set(PROJECT_LIB_FILES
   src/lane_detect.cpp
   src/lrc.cpp
   src/ScaleTruckController.cpp
-  src/sock_udp.cpp
 )
 
 #
@@ -84,7 +70,7 @@ add_library(${PROJECT_NAME}_lib
 )
 
 add_executable(${PROJECT_NAME}
-  nodes/control_node.cpp
+  nodes/control.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -98,7 +84,6 @@ target_link_libraries(${PROJECT_NAME}_lib
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
-  ${Boost_LIBRARIES}
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -110,7 +95,7 @@ add_library(LRC_lib
 )
 
 add_executable(LRC
-  nodes/lrc_node.cpp
+  nodes/lrc.cpp
 )
 
 add_dependencies(LRC
@@ -122,10 +107,15 @@ target_link_libraries(LRC_lib
   pthread
   stdc++
   ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
 )
 
 target_link_libraries(LRC
   LRC_lib
 )
 
+catkin_install_python(
+  PROGRAMS
+    nodes/onnx_lane_detector.py
+  DESTINATION
+    ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

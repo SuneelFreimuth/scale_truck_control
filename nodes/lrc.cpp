@@ -1,7 +1,7 @@
-#include "lrc/lrc.hpp"
+#include "lrc.hpp"
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "lrc_node");
+  ros::init(argc, argv, "lrc");
   ros::NodeHandle nodeHandle("~");
   LocalResiliencyCoordinator::LocalRC LocalRC(nodeHandle);  
   ros::spin();

@@ -1,41 +1,42 @@
-subscribers:
-  camera_reading:
-    topic: /usb_cam/image_raw
-    queue_size: 1
-  obstacle_reading:
-    topic: /tracked_obstacles
-    queue_size: 100
-  lrc_to_xavier:
-    topic: /lrc2xav_msg
-    queue_size: 1
+#
+# Config shared by all vehicles.
+#
 
-publishers:
-  lane_coef:
-    topic: /lane_msg
-    queue_size: 10
-  xavier_to_lrc:
-    topic: /xav2lrc_msg
-    queue_size: 1
+control_node:
+  enable_console_output: true
+  enable_image_views: false
+  queue_sizes:
+    sub_usb_cam_image_raw: 1
+    sub_lrc2xav_msg: 1
+    sub_raw_obstacles: 1
+    pub_xav2lrc_msg: 1
 
-LaneDetector:  
-  steer_angle: 0.0
+lane_detector:
+  init_steer_angle: 0.0
   eL_height: 0.2
   e1_height: 1.2563
   trust_height: 0.6667
-  lp: 609.3 
-
-ROI:
+  lp: 609.3
   dynamic_roi: true
-  threshold: 128
-  
-tcp_ip:
-  ip_addr: "tcp://192.168.0.18"
-  interface_name: "wlan0"
+  threshold: 80
 
-udp_ip:
-  ip_addr: "udp://239.255.255.250"
-
-image_view:
-  enable_opencv: false
-  wait_key_delay: 1
+lrc:
+  log_path: /home/jetson/catkin_ws/logfiles/
+  epsilon: 0.7
+  lu_ob_A: 0.6817
+  lu_ob_B: 0.3183
+  lu_ob_L: 0.2817
   enable_console_output: true
+
+  xavier_to_lrc:
+    topic: /xav2lrc_msg
+    queue_size: 1
+  ocr_to_lrc:
+    topic: /ocr2lrc_msg
+    queue_size: 1
+  lrc_to_xavier:
+    topic: /lrc2xav_msg
+    queue_size: 1
+  lrc_to_ocr:
+    topic: /lrc2ocr_msg
+    queue_size: 1

@@ -1,13 +1,11 @@
-#include "lrc/lrc.hpp"
+#include "lrc.hpp"
 
 #define PATH "/home/avees/catkin_ws/logfiles/"
 
 using namespace std;
 
-namespace LocalResiliencyCoordinator{
-
 LocalRC::LocalRC(ros::NodeHandle nh)
-	: nodeHandle_(nh), UDPsend_(), UDPrecv_(){
+	: nodeHandle_(nh) {
 	
 	init();	
 
@@ -20,7 +18,6 @@ LocalRC::~LocalRC(){
 	}
 
 	spinThread_.join();
-	udprecvThread_.join();
 }
 
 void LocalRC::init(){
@@ -37,30 +34,28 @@ void LocalRC::init(){
 
 	nodeHandle_.getParam("truck_index", (int&) Index_);
 
-	nodeHandle_.param("LrcParams/udp_group_addr", ADDR_, std::string("239.255.255.250"));
-	nodeHandle_.param("LrcParams/udp_group_port", PORT_, 9392);	
-	nodeHandle_.param("LrcParams/lrc_log_path", PATH_, std::string("/home/jetson/catkin_ws/logfiles/"));
-	nodeHandle_.param("LrcParams/epsilon", Epsilon_, 1.0f);
-	nodeHandle_.param("LrcParams/lu_ob_A", A_, 0.6817f);
-	nodeHandle_.param("LrcParams/lu_ob_B", B_, 0.3183f);
-	nodeHandle_.param("LrcParams/lu_ob_L", L_, 0.2817f);
-	nodeHandle_.param("LrcParams/enable_console_output", EnableConsoleOutput_, true);
+	nodeHandle_.param("lrc/log_path", PATH_, std::string("/home/jetson/catkin_ws/logfiles/"));
+	nodeHandle_.param("lrc/epsilon", Epsilon_, 1.0f);
+	nodeHandle_.param("lrc/lu_ob_A", A_, 0.6817f);
+	nodeHandle_.param("lrc/lu_ob_B", B_, 0.3183f);
+	nodeHandle_.param("lrc/lu_ob_L", L_, 0.2817f);
+	nodeHandle_.param("lrc/enable_console_output", EnableConsoleOutput_, true);
 
 	/******************************/
 	/* ROS Topic Subscribe Option */
 	/******************************/
-	nodeHandle_.param("LrcSubPub/xavier_to_lrc/topic", XavSubTopicName, std::string("/xav2lrc_msg"));
-	nodeHandle_.param("LrcSubPub/xavier_to_lrc/queue_size", XavSubQueueSize, 1);
-	nodeHandle_.param("LrcSubPub/ocr_to_lrc/topic", OcrSubTopicName, std::string("/ocr2lrc_msg"));
-	nodeHandle_.param("LrcSubPub/ocr_to_lrc/queue_size", OcrSubQueueSize, 1);
+	nodeHandle_.param("lrc/xavier_to_lrc/topic", XavSubTopicName, std::string("/xav2lrc_msg"));
+	nodeHandle_.param("lrc/xavier_to_lrc/queue_size", XavSubQueueSize, 1);
+	nodeHandle_.param("lrc/ocr_to_lrc/topic", OcrSubTopicName, std::string("/ocr2lrc_msg"));
+	nodeHandle_.param("lrc/ocr_to_lrc/queue_size", OcrSubQueueSize, 1);
 
 	/******************************/
 	/* ROS Topic Publish Option */
 	/******************************/
-	nodeHandle_.param("LrcSubPub/lrc_to_xavier/topic", XavPubTopicName, std::string("/lrc2xav_msg"));
-	nodeHandle_.param("LrcSubPub/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
-	nodeHandle_.param("LrcSubPub/lrc_to_ocr/topic", OcrPubTopicName, std::string("/lrc2ocr_msg"));
-	nodeHandle_.param("LrcSubPub/lrc_to_ocr/queue_size", OcrPubQueueSize, 1);
+	nodeHandle_.param("lrc/lrc_to_xavier/topic", XavPubTopicName, std::string("/lrc2xav_msg"));
+	nodeHandle_.param("lrc/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
+	nodeHandle_.param("lrc/lrc_to_ocr/topic", OcrPubTopicName, std::string("/lrc2ocr_msg"));
+	nodeHandle_.param("lrc/lrc_to_ocr/queue_size", OcrPubQueueSize, 1);
 
 	/************************/
 	/* ROS Topic Subscriber */ 
@@ -74,22 +69,7 @@ void LocalRC::init(){
 	XavPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2xav>(XavPubTopicName, XavPubQueueSize);
 	OcrPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2ocr>(OcrPubTopicName, OcrPubQueueSize);
 
-	/*****************/
-	/* UDP Multicast */
-	/*****************/
-	UDPsend_.GROUP_ = ADDR_.c_str();
-	UDPsend_.PORT_ = PORT_;
-	UDPsend_.sendInit();
-
-	UDPrecv_.GROUP_ = ADDR_.c_str();
-	UDPrecv_.PORT_ = PORT_;
-	UDPrecv_.recvInit();
-	
-	/*********************/
-	/* spin & udp thread */
-	/*********************/
 	spinThread_ = std::thread(&LocalRC::spin, this);
-	udprecvThread_ = std::thread(&LocalRC::UDPrecvInThread, this);
 }
 
 bool LocalRC::isNodeRunning(){
@@ -129,38 +109,6 @@ void LocalRC::LrcPub(){
 
 	XavPublisher_.publish(xav);
 	OcrPublisher_.publish(ocr);
-}
-
-void LocalRC::UDPsendFunc()
-{
-    struct UDPsock::UDP_DATA udpData;
-
-    udpData.index = Index_;
-    udpData.to = 100;	//CRC index
-    udpData.alpha = Alpha_;
-    udpData.beta = Beta_;
-    udpData.gamma = Gamma_;
-    udpData.current_vel = CurVel_;
-    udpData.current_dist = CurDist_;
-    udpData.mode = LrcMode_;
-
-    UDPsend_.sendData(udpData);
-}
-
-void* LocalRC::UDPrecvInThread()
-{
-	struct UDPsock::UDP_DATA udpData;
-	
-	while(ros::ok()) { 
-		UDPrecv_.recvData(&udpData);
-		if(udpData.index == 100 && udpData.to == Index_) {	//CRC index	
-			PredVel_ = udpData.predict_vel;
-			CrcMode_ = udpData.mode;
-			if (CrcMode_ >= LrcMode_){
-				LrcMode_ = CrcMode_;
-			}
-		}
-	}
 }
 
 void LocalRC::VelocitySensorCheck(){
@@ -261,7 +209,6 @@ void LocalRC::spin(){
 		VelocitySensorCheck();
 		ModeCheck(CrcMode_);
 		LrcPub();
-		UDPsendFunc();
 		RecordData(&startTime);
 		PrintData();
 
@@ -270,6 +217,4 @@ void LocalRC::spin(){
 			break;
 		}
 	}
-}
-
 }

@@ -11,7 +11,6 @@
 #include <SD.h>
 #include <scale_truck_control/lrc2ocr.h>
 #include <scale_truck_control/ocr2lrc.h>
-
 // Timing Periods
 #define BAUD_RATE     (57600)
 #define CYCLE_TIME    (100000) // us
@@ -28,15 +27,22 @@
 #define EN_PINB       (2)
 
 // Encoder
+constexpr int COUNTS_PER_REV = 180;
+constexpr float WHEEL_DIA = (0.085); // m
+constexpr float WHEEL_CIRCUM = WHEEL_DIA * PI;
+
+constexpr float MIN_STEER_ANGLE = -26;
+constexpr float MAX_STEER_ANGLE = 26;
+constexpr int MIN_STEER_PWM = 1000;
+constexpr int MAX_STEER_PWM = 2000;
+
+
 #define TICK2CYCLE    (60) // (65) // 65 ticks(EN_pos_) = 1 wheel cycle
-#define WHEEL_DIM     (0.085) // m
 #define MAX_SPEED     (2)  // m/s
 #define MAX_PWM       (2000)
 #define MIN_PWM       (1600)
 #define ZERO_PWM      (1500)
-#define MAX_STEER     (1800)
-#define MIN_STEER     (1200)
-#define STEER_CENTER  (1480)
+
 
 // Enable VEBBOSE
 #define DATA_LOG      (0)
@@ -49,14 +55,98 @@ float limit(float x, float min, float max) {
   return x;
 }
 
+float mapLinear(float x, float min0, float max0, float min1, float max1) {
+  return min1 + (max1 - min1) * (x - min0) / (max0 - min0);
+}
+
+int steerAngleToPwm(float steer_angle) {
+  return mapLinear(steer_angle, MIN_STEER_ANGLE, MAX_STEER_ANGLE,
+    MIN_STEER_PWM, MAX_STEER_PWM);
+}
+
+// Interfaces with a quadrature encoder, counting on every
+// edge of channel A.
+class Encoder {
+private:
+  int count_, last_count, pin_a, pin_b;
+  unsigned long time_cnt_sampled, time_last_cnt_sampled;
+
+public:
+  Encoder(int pin_a, int pin_b)
+    : count_{0}, last_count{-1}, pin_a{pin_a}, pin_b{pin_b},
+      time_cnt_sampled{1}, time_last_cnt_sampled{0}
+  {}
+
+  void attachPins(void pin_a_handler()) {
+    pinMode(pin_a, INPUT);
+    pinMode(pin_b, INPUT);
+    attachInterrupt(pin_a, pin_a_handler, CHANGE);
+  }
+
+  int count() {
+    return count_;
+  }
+
+  float revolutions() {
+    return (float) count_ / COUNTS_PER_REV;
+  }
+
+  float meters() {
+    return revolutions() * WHEEL_CIRCUM;
+  }
+
+  // Given in revolutions per second (rps)
+  float angularVelocity() {
+    float dt = time_cnt_sampled - time_last_cnt_sampled;
+    float dx = (float) (count_ - last_count) / COUNTS_PER_REV;
+    return dx / dt * 1e6;
+  }
+
+  // Given in meters per second (m/s)
+  float velocity() {
+    return angularVelocity() * WHEEL_CIRCUM;
+  }
+
+  void updateCount() {
+    time_last_cnt_sampled = time_cnt_sampled;
+    last_count = count_;
+    time_cnt_sampled = micros();
+
+    auto a = digitalRead(pin_a);
+    auto b = digitalRead(pin_b);
+    // TODO: Replace with lookup table
+    if (a == HIGH) { // Pin A positive edge
+      if (b == LOW)
+        count_ += 1;
+      else
+        count_ -= 1;
+    } else { // Pin A negative edge
+      if (b == HIGH)
+        count_ += 1;
+      else
+        count_ -= 1;
+    }
+
+    // Serial.printf("Displacement: %.4f meters\n", meters);
+    // Serial.printf("Cur vel:      %.4f m/s\n", velocity());
+    // Serial.print("Displacement:");
+    // Serial.print(meters());
+    // Serial.print(",");
+    // Serial.print("Cur vel:");
+    // Serial.println(velocity());
+  }
+};
+
 Servo throttle_;  //Setup Throttle
 Servo steer_;     //Setup Steering
 Servo gear_;      //Setup Trasnmission
 
+Encoder encoder(EN_PINA, EN_PINB);
+
 int Index_;
 bool Alpha_ = false;
 float raw_throttle_;
-float tx_throttle_;
+float tx_tar_vel;
 float tx_steer_;
 float tx_dist_;
 float tx_tdist_;
@@ -64,9 +154,9 @@ float pred_vel_ = 0;
 float output_;
 
 // Setup Global Variables
-volatile int EN_pos_;
-volatile int CountT_;
-volatile int cumCountT_;
+//// volatile int EN_pos_;
+//// volatile int CountT_;
+//// volatile int cumCountT_;
 
 // Setup the File
 char filename_[] = "LV1_00.TXT";
@@ -88,23 +178,29 @@ constexpr float Ki_ = 2.0; // 0.4; //10.0;
 constexpr float Ka_ = 0.01;
 constexpr float Kf_ = 1.0;  // feed forward const.
 constexpr float dt_ = 0.1;
-constexpr float circ_ = WHEEL_DIM * M_PI;
+constexpr float circ_ = WHEEL_DIA * M_PI;
 
 scale_truck_control::ocr2lrc pub_msg_;
-std_msgs::String string_msg;
+std_msgs::String log_msg;
 std_msgs::Float32 pwm_msg;
+std_msgs::Float32 cur_vel_msg;
+std_msgs::Float32 tar_vel_msg;
 
 ros::NodeHandle nh_;
 
 void LrcCallback(const scale_truck_control::lrc2ocr &msg);
+void Xav2OcrCallback(const std_msgs::Float32& msg);
 void resetSystem(const std_msgs::Empty&);
 
+ros::Subscriber<std_msgs::Float32> subXav2Ocr("/xav2ocr", &Xav2OcrCallback, 10);
 ros::Subscriber<scale_truck_control::lrc2ocr> rosSubMsg("/lrc2ocr_msg", &LrcCallback);
 ros::Subscriber<std_msgs::Empty> sub_reset("/low_level_reset", &resetSystem);
 
 ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
-ros::Publisher pub_log("/low_level_log", &string_msg);
+ros::Publisher pub_log("/low_level_log", &log_msg);
 ros::Publisher pub_pwm("/low_level_pwm", &pwm_msg);
+ros::Publisher pub_cur_vel("/low_level_cur_vel", &cur_vel_msg);
+ros::Publisher pub_tar_vel("/low_level_tar_vel", &tar_vel_msg);
 
 struct PidController {
   float output, err, prev_err, P_err, I_err;
@@ -131,15 +227,15 @@ struct PidController {
   }
 
   float setSpeed(float tar_vel, float cur_vel) {
-    char text[256];
-    snprintf(text, 256, "PWM output %.3f", output);
-    string_msg.data = text;
-    pub_log.publish(&string_msg);
-
     float u, u_k;
     float u_dist, u_dist_k;
     float ref_vel;
     pub_msg_.cur_vel = cur_vel;
+
+    cur_vel_msg.data = cur_vel;
+    pub_cur_vel.publish(&cur_vel_msg);
+    tar_vel_msg.data = tar_vel;
+    pub_tar_vel.publish(&tar_vel_msg);
     
     if (Alpha_)
       cur_vel = pred_vel_;
@@ -191,8 +287,7 @@ struct PidController {
     prev_u_k = u_k;
     prev_u = u;
     prev_dist_err = dist_err;
-    //output = limit(output, MIN_PWM, MAX_PWM);
-    throttle_.writeMicroseconds(output);
+    output = limit(output, MIN_PWM, MAX_PWM);
     return output;
   }
 };
@@ -203,9 +298,21 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   tx_steer_ = msg.steer_angle;  // float32
   tx_dist_ = msg.cur_dist;
   tx_tdist_ = msg.tar_dist;
-  tx_throttle_ = msg.tar_vel;
+  tx_tar_vel = msg.tar_vel;
   pred_vel_ = msg.pred_vel;
   Alpha_ = msg.alpha;
+}
+
+void Xav2OcrCallback(const std_msgs::Float32& msg) {
+  float steer_angle = limit(msg.data, MIN_STEER_ANGLE, MAX_STEER_ANGLE);
+  int pwm = steerAngleToPwm(steer_angle);
+  
+  char log[256];
+  snprintf(log, 256, "Steer angle: %.3f, Pulse width: %d", steer_angle, pwm);
+  log_msg.data = log;
+  pub_log.publish(&log_msg);
+
+  steer_.writeMicroseconds(pwm);
 }
 
 PidController pid;
@@ -233,118 +340,43 @@ void set_gear(int gear,Servo myservo){
 */
 void setANGLE() {
   float angle = tx_steer_;
-  float output = (angle * 12.0) + (float)STEER_CENTER;
-  output = limit(output, MIN_STEER, MAX_STEER);
+
+  // float center = 80.0f;
+  // float output = center + angle;
+  /*CHRIS: changed this to simplify the output
+  to servo. The apparent trade-off is that we now have 180 postion
+  instead of 1000. I say apparent because other sources claim that
+  the write() function will do the math for us and call
+  writeMicroseconds() anyways.
+  
+  */
+  
+  // float output = (angle * 12.0) + (float)STEER_CENTER;
+  // output = limit(output, MIN_STEER, MAX_STEER);
+  // steer_.write(0);
+  angle = limit(angle, MIN_STEER_ANGLE, MAX_STEER_ANGLE);
+  int output = steerAngleToPwm(angle);
+  
+  char msg[256];
+  snprintf(msg, 256, "Steer angle: %.3f, PWM: %d", angle, output);
+  log_msg.data = msg;
+  pub_log.publish(&log_msg);
+
   steer_.writeMicroseconds(output);
 }
 
 /*
-   Encoder A interrupt service routine
-*/
-void readEncoderA() {
-  if (digitalRead(EN_PINA) == HIGH) {
-    if (digitalRead(EN_PINB) == LOW) {
-      EN_pos_ += 1;  // white + black
-    }
-    else {
-      EN_pos_ -= 1; // white - black
-    }
-  }
-  else   // must be a high-to-low edge on channel A
-  {
-    if (digitalRead(EN_PINB) == HIGH) {
-      EN_pos_ += 1;
-    }
-    else {
-      EN_pos_ -= 1;
-    }
-  }
-  cumCountT_ += CountT_;
-  CountT_ = 0;
-}
-/*
    RPM Check Function
 */
-void CheckEN() {
-  // Serial.print("in CheckEN\n");
-  static float output_vel;
-  static float output_angle;
-  static float cur_vel;
-  static float target_vel;
-  static float target_ANGLE;
-  // static float target_RPM;
-  // static float cur_RPM;
-  target_vel = tx_throttle_; // m/s
-  target_ANGLE = tx_steer_; // degree
-  if(cumCountT_ == 0)
-    cur_vel = 0;
-  else
-    cur_vel = (float)EN_pos_ / TICK2CYCLE * ( SEC_TIME / ((float)cumCountT_*T_TIME)) * circ_; // m/s
-  if(cur_vel < 0)
-    cur_vel = 0;
-  // Serial.print("current Velocity: ");
-  // Serial.println(cur_vel);
-  output_vel = pid.setSpeed(target_vel, cur_vel);
-  if (DATA_LOG) {
-    // Serial.print("Target Velocity: ");
-    // Serial.print(target_vel);
-    // Serial.print(" m/s | ");
-    // 
-    // Serial.print("Current Velocity: ");
-    // Serial.print(cur_vel);
-    // Serial.print(" m/s | ");
-    // 
-    // Serial.print("Throttle Signal: ");
-    // Serial.print(output_vel);
-    // Serial.println(" us | ");
-    // 
-    // Serial.print("Encoder Position: ");
-    // Serial.print(EN_pos_);
-    // Serial.print(" ticks | ");
-    // 
-    // Serial.print("Cumulative Count: ");
-    // Serial.print(cumCountT_);
-    // Serial.print(" ticks | ");
-    // 
-    // Serial.print("Target Angle: ");
-    // Serial.print(target_ANGLE);
-    // Serial.print(" deg | ");
-    // 
-    // Serial.print("Output Angle: ");
-    // Serial.print(output_angle);
-    // Serial.println(" deg");
-  }
-
-  logfile_ = SD.open(filename_, FILE_WRITE);
-  logfile_.print(target_vel);
-  logfile_.print(",");
-  logfile_.print(cur_vel);
-  logfile_.print(",");
-  logfile_.print(pred_vel_);
-  logfile_.print(",");
-  logfile_.print(Alpha_);
-  logfile_.print(",");
-  logfile_.print(EN_pos_);
-  logfile_.print(",");
-  logfile_.print(cumCountT_);
-  logfile_.print(",");
-  logfile_.print(output_vel);
-  logfile_.print(",");
-  logfile_.print(Kp_);
-  logfile_.print(",");
-  logfile_.print(Ki_);
-  logfile_.print(",");
-  logfile_.print(tx_dist_);
-  logfile_.print(",");
-  logfile_.print(target_ANGLE);
-  logfile_.print(",");
-  logfile_.close();
-  // CLEAR counter
-  ClearT();
+void calcAndApplyThrottle() {
+  float target_vel = tx_tar_vel; // m/s
+  float cur_vel = encoder.velocity();
+  float output_vel = pid.setSpeed(target_vel, cur_vel);
+  throttle_.writeMicroseconds(output_vel);
 }
-void ClearT() {
-  EN_pos_ = 0;
-  cumCountT_ = 0;
+
+void onPinAChange() {
+  encoder.updateCount();
 }
 
 /*
@@ -353,18 +385,24 @@ void ClearT() {
 void setup() {
   nh_.initNode();
   nh_.subscribe(rosSubMsg);
+  nh_.subscribe(subXav2Ocr);
   nh_.subscribe(sub_reset);
   nh_.advertise(rosPubMsg);
   nh_.advertise(pub_log);
   nh_.advertise(pub_pwm);
+  nh_.advertise(pub_cur_vel);
+  nh_.advertise(pub_tar_vel);
 
   throttle_.attach(THROTTLE_PIN);
   steer_.attach(STEER_PIN);
   gear_.attach(GEAR_PIN);
-  set_gear(1,gear_);
-  pinMode(EN_PINA, INPUT);
-  pinMode(EN_PINB, INPUT);
-  attachInterrupt(3, readEncoderA, CHANGE);
+    
+  encoder.attachPins(onPinAChange);
+
+  // set_gear(1,gear_);
+  // pinMode(EN_PINA, INPUT);
+  // pinMode(EN_PINB, INPUT);
+  // attachInterrupt(EN_PINA, readEncoderA, CHANGE);
   // Serial.begin(BAUD_RATE);
   if(!SD.begin(SD_PIN)){
     // Serial.println("Card failed, or not present");
@@ -382,12 +420,12 @@ void setup() {
     // Serial.print(filename_);
     logfile_.close();
   }
-  // Serial.print("here");
-  Timer_1.begin(CountT, T_TIME);
-  Timer_2.begin(CheckEN, CYCLE_TIME);
-  Timer_3.begin(setANGLE, ANGLE_TIME);
-  // Serial.print("[OpenCR] setup()");
-  tx_throttle_ = 0.0;
+
+  // Timer_1.begin(CountT, T_TIME);
+  Timer_1.begin(calcAndApplyThrottle, CYCLE_TIME);
+  // Timer_3.begin(setANGLE, ANGLE_TIME);
+
+  tx_tar_vel = 0.0;
   tx_steer_ = 0.0;
 }
 /*

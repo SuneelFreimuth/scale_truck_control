@@ -11,8 +11,6 @@
 #include <sys/time.h>
 #include <string>
 
-#include "sock_udp/sock_udp.hpp"
-
 #include <scale_truck_control/xav2lrc.h>
 #include <scale_truck_control/ocr2lrc.h>
 #include <scale_truck_control/lrc2xav.h>
@@ -21,8 +19,6 @@
 #include "common.hpp"
 
 using namespace std;
-
-namespace LocalResiliencyCoordinator{
 
 class LocalRC{
 	public:
@@ -38,20 +34,13 @@ class LocalRC{
 		ros::Publisher XavPublisher_;
 		ros::Publisher OcrPublisher_;
 
-		UDPsock::UDPsocket UDPsend_;
-		UDPsock::UDPsocket UDPrecv_;
-		std::string ADDR_;
 		TruckIndex Index_;
-		int PORT_;
-		struct UDPsock::UDP_DATA udpData_;
 
 		void init();
 		bool isNodeRunning();
 		void XavCallback(const scale_truck_control::xav2lrc &msg);
 		void OcrCallback(const scale_truck_control::ocr2lrc &msg);
 		void LrcPub();
-		void UDPsendFunc();
-		void* UDPrecvInThread();
 		void VelocitySensorCheck();
 		void ModeCheck(uint8_t crc_mode);
 		void RecordData(struct timeval *startTime);
@@ -78,12 +67,8 @@ class LocalRC{
 		double Time_ = 0;
 
 		std::thread spinThread_;
-		//std::thread udpsendThread_;
-		std::thread udprecvThread_;
 
 		std::mutex mutexNodeStatus_;
 		std::mutex mutexXavCallback_;
 		std::mutex mutexOcrCallback_;
 };
-
-}
