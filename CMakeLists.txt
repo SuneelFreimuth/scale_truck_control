@@ -22,7 +22,6 @@ find_package(catkin REQUIRED
 
 add_message_files(
   FILES
-    LaneCoefs.msg
     lane_coef.msg
     lane.msg
     xav2lrc.msg
@@ -113,9 +112,3 @@ target_link_libraries(LRC
   LRC_lib
 )
 
-catkin_install_python(
-  PROGRAMS
-    nodes/onnx_lane_detector.py
-  DESTINATION
-    ${CATKIN_PACKAGE_BIN_DESTINATION}
-)

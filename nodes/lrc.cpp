@@ -3,7 +3,7 @@
 int main(int argc, char** argv) {
   ros::init(argc, argv, "lrc");
   ros::NodeHandle nodeHandle("~");
-  LocalResiliencyCoordinator::LocalRC LocalRC(nodeHandle);  
+  LocalRC LocalRC(nodeHandle);  
   ros::spin();
   return 0;
 }

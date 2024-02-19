@@ -1,0 +1,70 @@
+#!/usr/bin/python3.8
+import rospy
+from sensor_msgs.msg import Image
+from scale_truck_control.msg import LaneCoefs
+from cv_bridge import CvBridge
+from ultrafastLaneDetector import UltrafastLaneDetector, ModelType
+import cv2
+import numpy as np
+
+POLY_DEGREE = 2
+MODEL_PATH = '/home/bacatec/Ultrafast-Lane-Detection-Inference-Pytorch-/models/tusimple_18.pth'
+MODEL_TYPE = ModelType.TUSIMPLE
+DISPLAY_IMAGE = True
+USE_GPU = False
+
+cv_bridge = CvBridge()
+lane_detector = UltrafastLaneDetector(MODEL_PATH, MODEL_TYPE, USE_GPU)
+pub_lane_coefs = None
+
+calibration_matrix = np.array([
+    [3.2918100682757097e+02, 0., 320.],
+    [0., 3.2918100682757097e+02, 240.],
+    [0., 0., 1.]
+])
+dist_coefs = np.array([
+    -3.2566540239089398e-01,
+    1.1504807178349362e-01,
+    0.,
+    0.,
+    -2.1908791800876997e-02,
+])
+map1, map2 = cv2.initUndistortRectifyMap(calibration_matrix, dist_coefs,
+    None, calibration_matrix, (640, 480), cv2.CV_32FC1);
+
+def undistort_image(img):
+    return cv2.remap(img, map1, map2, cv2.INTER_LINEAR)
+
+def on_usb_cam_image(msg: Image):
+    img = cv_bridge.imgmsg_to_cv2(msg)
+    img = undistort_image(img)
+    output = lane_detector.detect_lanes(img, draw_points=True)
+    cv2.namedWindow('Detected Lanes', cv2.WINDOW_NORMAL)
+    cv2.imshow('Detected Lanes', output)
+    cv2.waitKey(1)
+
+    # input_tensor = lane_detector.prepare_input(img)
+    # output = lane_detector.inference(input_tensor)
+    # lanes_points, lanes_detected = lane_detector.process_output(output, lane_detector.cfg)
+    # if DISPLAY_IMAGE:
+        # output = lane_detector.draw_lanes(img, lanes_points, lanes_detected, lane_detector.cfg, True)
+        # cv2.namedWindow('Detected Lanes', cv2.WINDOW_NORMAL) 
+        # cv2.imshow('Detected Lanes', output)
+    # Polyfit
+    # np.polyfit()
+    
+    # Publish
+    # pub_lane_coefs.publish(...)
+
+def main():
+    rospy.init_node('onnx_lane_detector')
+    rospy.Subscriber('/usb_cam/image_raw', Image, on_usb_cam_image)
+    global pub_lane_coefs
+    pub_lane_coefs = rospy.Publisher('/lane_coefs', LaneCoefs, queue_size=1)
+    rospy.spin()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass
