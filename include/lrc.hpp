@@ -11,10 +11,10 @@
 #include <sys/time.h>
 #include <string>
 
-#include <scale_truck_control/xav2lrc.h>
-#include <scale_truck_control/ocr2lrc.h>
-#include <scale_truck_control/lrc2xav.h>
-#include <scale_truck_control/lrc2ocr.h>
+#include <scale_truck_control_msgs/xav2lrc.h>
+#include <scale_truck_control_msgs/ocr2lrc.h>
+#include <scale_truck_control_msgs/lrc2xav.h>
+#include <scale_truck_control_msgs/lrc2ocr.h>
 
 #include "common.hpp"
 

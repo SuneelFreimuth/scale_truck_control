@@ -18,17 +18,18 @@ find_package(catkin REQUIRED
     geometry_msgs
     cv_bridge
     obstacle_detector 
+    scale_truck_control_msgs
 )
 
-add_message_files(
-  FILES
-    lane_coef.msg
-    lane.msg
-    xav2lrc.msg
-    lrc2xav.msg
-    lrc2ocr.msg
-    ocr2lrc.msg
-)
+# add_message_files(
+#   FILES
+#     lane_coef.msg
+#     lane.msg
+#     xav2lrc.msg
+#     lrc2xav.msg
+#     lrc2ocr.msg
+#     ocr2lrc.msg
+# )
 
 generate_messages(
   DEPENDENCIES

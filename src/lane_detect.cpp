@@ -664,28 +664,29 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 
 	float car_position = width_ / 2;
 
-	lane_coef_.right.a = r_fit.at<float>(2, 0);
-	lane_coef_.right.b = r_fit.at<float>(1, 0);
-	lane_coef_.right.c = r_fit.at<float>(0, 0);
+	lane_coef_.right.c2 = r_fit.at<float>(2, 0);
+	lane_coef_.right.c1 = r_fit.at<float>(1, 0);
+	lane_coef_.right.c0 = r_fit.at<float>(0, 0);
 
-	lane_coef_.left.a = l_fit.at<float>(2, 0);
-	lane_coef_.left.b = l_fit.at<float>(1, 0);
-	lane_coef_.left.c = l_fit.at<float>(0, 0);
+	lane_coef_.left.c2 = l_fit.at<float>(2, 0);
+	lane_coef_.left.c1 = l_fit.at<float>(1, 0);
+	lane_coef_.left.c0 = l_fit.at<float>(0, 0);
 
-	lane_coef_.center.a = c_fit.at<float>(2, 0);
-	lane_coef_.center.b = c_fit.at<float>(1, 0);
-	lane_coef_.center.c = c_fit.at<float>(0, 0);
+	lane_coef_.center.c2 = c_fit.at<float>(2, 0);
+	lane_coef_.center.c1 = c_fit.at<float>(1, 0);
+	lane_coef_.center.c0 = c_fit.at<float>(0, 0);
 
 	float i = ((float)height_) * eL_height_;	
 	float j = ((float)height_) * trust_height_;
 	float k = ((float)height_) * e1_height_;
 
 	float l1 =  j - i;
-	float l2 = ((lane_coef_.center.a * pow(i, 2)) + (lane_coef_.center.b * i) + lane_coef_.center.c) - ((lane_coef_.center.a * pow(j, 2)) + (lane_coef_.center.b * j) + lane_coef_.center.c);
+	float l2 = ((lane_coef_.center.c2 * pow(i, 2)) + (lane_coef_.center.c1 * i) + lane_coef_.center.c0) -
+		((lane_coef_.center.c2 * pow(j, 2)) + (lane_coef_.center.c1 * j) + lane_coef_.center.c0);
 
-	e_values_[0] = ((lane_coef_.center.a * pow(i, 2)) + (lane_coef_.center.b * i) + lane_coef_.center.c) - car_position;	//eL
+	e_values_[0] = ((lane_coef_.center.c2 * pow(i, 2)) + (lane_coef_.center.c1 * i) + lane_coef_.center.c0) - car_position;	//eL
 	e_values_[1] = e_values_[0] - (lp_ * (l2 / l1));	//trust_e1
-	e_values_[2] = ((lane_coef_.center.a * pow(k, 2)) + (lane_coef_.center.b * k) + lane_coef_.center.c) - car_position;	//e1
+	e_values_[2] = ((lane_coef_.center.c2 * pow(k, 2)) + (lane_coef_.center.c1 * k) + lane_coef_.center.c0) - car_position;	//e1
 	SteerAngle_ = ((-1.0f * K1_) * e_values_[1]) + ((-1.0f * K2_) * e_values_[0]);
 }
 

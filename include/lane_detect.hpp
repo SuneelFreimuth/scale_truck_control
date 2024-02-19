@@ -12,7 +12,7 @@
 #include <cmath>
 #include <fstream>
 #include <ros/ros.h>
-#include <scale_truck_control/lane_coef.h>
+#include <scale_truck_control_msgs/lane_coef.h>
 #include <time.h>
 
 using namespace cv;

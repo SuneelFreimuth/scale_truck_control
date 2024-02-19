@@ -31,8 +31,8 @@
 #include "lane_detect.hpp"
 
 //custom msgs
-#include <scale_truck_control/lrc2xav.h>
-#include <scale_truck_control/xav2lrc.h>
+#include <scale_truck_control_msgs/lrc2xav.h>
+#include <scale_truck_control_msgs/xav2lrc.h>
 
 #include "common.hpp"
 

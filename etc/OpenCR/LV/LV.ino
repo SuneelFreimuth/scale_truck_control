@@ -9,8 +9,8 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Empty.h>
 #include <SD.h>
-#include <scale_truck_control/lrc2ocr.h>
-#include <scale_truck_control/ocr2lrc.h>
+#include <scale_truck_control_msgs/lrc2ocr.h>
+#include <scale_truck_control_msgs/ocr2lrc.h>
 // Timing Periods
 #define BAUD_RATE     (57600)
 #define CYCLE_TIME    (100000) // us
