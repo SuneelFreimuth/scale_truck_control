@@ -168,6 +168,18 @@ cd ~/catkin_ws/
 catkin_make
 ```
 
+### Step 6: Install Pip and PyTorch
+
+Install pip for Python 3.8:
+```
+sudo apt install python3-pip
+```
+
+[Install PyTorch](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html#prereqs-install) by running the following commands: 
+```
+python3 -m pip install --no-cache https://developer.download.nvidia.cn/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl
+```
+
 ### Step 6: Clone scale_truck_control and Dependencies
 
 Enter `~/catkin_ws/src`, which was created in the last step, then clone scale_truck_control and each of its dependencies:
@@ -177,6 +189,14 @@ cd ~/catkin_ws/src
 * [scale_truck_control](https://github.com/SuneelFreimuth/scale_truck_control.git)
     ```
     git clone https://github.com/SuneelFreimuth/scale_truck_control.git 
+    ```
+* [scale_truck_control_lane_detector](https://github.com/SuneelFreimuth/scale_truck_control_lane_detector.git)
+    ```
+    git clone https://github.com/SuneelFreimuth/scale_truck_control_lane_detector.git 
+    ```
+* [scale_truck_control_msgs](https://github.com/SuneelFreimuth/scale_truck_control_msgs.git)
+    ```
+    git clone https://github.com/SuneelFreimuth/scale_truck_control_msgs.git 
     ```
 * [geometry_msgs](https://github.com/ros/common_msgs/) (provided by `common_msgs`)
     ```
@@ -203,18 +223,10 @@ cd ~/catkin_ws/src
     git clone -b noetic https://github.com/ros-perception/vision_opencv.git
     ```
 
-vision_opencv requires the following modifications:
-* For `~/catkin_ws/src/vision_opencv/cv_bridge/CMakelists.txt`:
-    ```
-    --find_package(Boost REQUIRED python37)
-    ++find_package(Boost REQUIRED python)
-    ```
-* For `~/catkin_ws/src/vision_opencv/cv_bridge/src/module.hpp`:
-    ```
-    --static void * do_numpy_import( )
-    ++static void do_numpy_import( )
-    --return nullptr;
-    ```
+Install scale_truck_control_lane_detector's dependencies:
+```
+pip3 install -r ~/catkin_ws/src/scale_truck_control_lane_detector/requirements.txt
+```
 
 Install rosserial-arduino for ROS Noetic for communication with the low-level controller:
 ```
