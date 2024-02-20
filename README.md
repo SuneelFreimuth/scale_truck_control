@@ -126,13 +126,7 @@ Libs.private: -ldl -lm -lpthread -lrt
 Cflags: -I${includedir_old} -I${includedir_new}
 ```
 
-### Step 3: Install jetson-stats
-```
-sudo pip3 install -U jetson-stats
-jetson_release
-```
-
-### Step 4: Install ROS
+### Step 3: Install ROS
 
 Add the ROS repositories to `/etc/apt/sources.list.d/`:
 ```
@@ -159,7 +153,7 @@ echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
 source /opt/ros/noetic/setup.bash
 ```
 
-### Step 5: Create a Catkin Workspace
+### Step 4: Create a Catkin Workspace
 
 Make a directory for the catkin workspace and run catkin_make:
 ```
@@ -168,7 +162,7 @@ cd ~/catkin_ws/
 catkin_make
 ```
 
-### Step 6: Install Pip and PyTorch
+### Step 5: Install Pip and PyTorch
 
 Install pip for Python 3.8:
 ```
@@ -177,7 +171,7 @@ sudo apt install python3-pip
 
 [Install PyTorch](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html#prereqs-install):
 ```
-python3 -m pip install --no-cache https://developer.download.nvidia.cn/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl
+pip3 install --no-cache https://developer.download.nvidia.cn/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl
 ```
 
 [Build Torchvision from source and install](https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048):
@@ -191,7 +185,7 @@ python3 setup.py install --user
 
 ### Step 6: Clone scale_truck_control and Dependencies
 
-Enter `~/catkin_ws/src`, which was created in the last step, then clone scale_truck_control and each of its dependencies:
+Enter `~/catkin_ws/src`, which was created in Step 5, then clone scale_truck_control and each of its dependencies:
 ```
 cd ~/catkin_ws/src
 ```
@@ -253,4 +247,9 @@ catkin_make
 After building scale_truck_control as described in the previous section, run `roslaunch`:
 ```
 roslaunch scale_truck_control LV.launch
+```
+
+To use the deep learning-based lane detector:
+```
+roslaunch scale_truck_control LV_deep_learning.launch
 ```
