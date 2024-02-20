@@ -175,9 +175,18 @@ Install pip for Python 3.8:
 sudo apt install python3-pip
 ```
 
-[Install PyTorch](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html#prereqs-install) by running the following commands: 
+[Install PyTorch](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html#prereqs-install):
 ```
 python3 -m pip install --no-cache https://developer.download.nvidia.cn/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl
+```
+
+[Build Torchvision from source and install](https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048):
+```
+sudo apt install libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
+git clone --branch v0.15.1 https://github.com/pytorch/vision torchvision
+cd torchvision
+export BUILD_VERSION=0.15.0
+python3 setup.py install --user
 ```
 
 ### Step 6: Clone scale_truck_control and Dependencies
