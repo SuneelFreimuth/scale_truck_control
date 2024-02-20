@@ -3,7 +3,7 @@
 #
 
 control_node:
-  enable_console_output: true
+  enable_console_output: false
   enable_image_views: false
   queue_sizes:
     sub_usb_cam_image_raw: 1

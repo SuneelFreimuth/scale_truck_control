@@ -66,8 +66,8 @@ void LocalRC::init(){
 	/************************/
 	/* ROS Topic Publisher */ 
 	/************************/
-	XavPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2xav>(XavPubTopicName, XavPubQueueSize);
-	OcrPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2ocr>(OcrPubTopicName, OcrPubQueueSize);
+	XavPublisher_ = nodeHandle_.advertise<scale_truck_control_msgs::lrc2xav>(XavPubTopicName, XavPubQueueSize);
+	OcrPublisher_ = nodeHandle_.advertise<scale_truck_control_msgs::lrc2ocr>(OcrPubTopicName, OcrPubQueueSize);
 
 	spinThread_ = std::thread(&LocalRC::spin, this);
 }
@@ -78,7 +78,7 @@ bool LocalRC::isNodeRunning(){
 }
 
 
-void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
+void LocalRC::XavCallback(const scale_truck_control_msgs::xav2lrc &msg){
 	const std::lock_guard<std::mutex> lock(mutexXavCallback_);
 	AngleDegree_ = msg.steer_angle;
 	CurDist_ = msg.cur_dist;
@@ -88,15 +88,15 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
 	Gamma_ = msg.gamma;
 }
 
-void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
+void LocalRC::OcrCallback(const scale_truck_control_msgs::ocr2lrc &msg){
 	const std::lock_guard<std::mutex> lock(mutexOcrCallback_);
 	CurVel_ = msg.cur_vel;
 	SatVel_ = msg.u_k;	//saturated velocity
 }
 
 void LocalRC::LrcPub(){
-	scale_truck_control::lrc2xav xav;
-	scale_truck_control::lrc2ocr ocr;
+	scale_truck_control_msgs::lrc2xav xav;
+	scale_truck_control_msgs::lrc2ocr ocr;
 	
 	xav.cur_vel = CurVel_;
 	ocr.index = Index_;

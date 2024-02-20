@@ -33,7 +33,7 @@ ScaleTruckController::~ScaleTruckController() {
     isNodeRunning_ = false;
   }
 
-  scale_truck_control::xav2lrc msg;
+  scale_truck_control_msgs::xav2lrc msg;
   msg.steer_angle = 0;
   msg.cur_dist = distance_;
   msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
@@ -114,7 +114,7 @@ void ScaleTruckController::init() {
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
-  XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
+  XavPublisher_ = nodeHandle_.advertise<scale_truck_control_msgs::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
   xavToOcrPublisher_ = nodeHandle_.advertise<std_msgs::Float32>("/xav2ocr", 20);
 
   /**********************************/
@@ -284,7 +284,7 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
   }
 }
 
-void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
+void ScaleTruckController::XavSubCallback(const scale_truck_control_msgs::lrc2xav &msg){
   {
     std::lock_guard<std::mutex> lockVelCallback(mutexVelCallback_);
     CurVel_ = msg.cur_vel;
@@ -295,3 +295,4 @@ void ScaleTruckController::guiTargetVelCallback(const std_msgs::Float32& target_
   const std::lock_guard<std::mutex> lock(mutexTargetVel_);
   TargetVel_ = target_vel.data;
 }
+

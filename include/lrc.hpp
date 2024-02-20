@@ -38,8 +38,8 @@ class LocalRC{
 
 		void init();
 		bool isNodeRunning();
-		void XavCallback(const scale_truck_control::xav2lrc &msg);
-		void OcrCallback(const scale_truck_control::ocr2lrc &msg);
+		void XavCallback(const scale_truck_control_msgs::xav2lrc &msg);
+    	void OcrCallback(const scale_truck_control_msgs::ocr2lrc &msg);
 		void LrcPub();
 		void VelocitySensorCheck();
 		void ModeCheck(uint8_t crc_mode);

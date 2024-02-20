@@ -54,8 +54,9 @@ class ScaleTruckController {
 
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
-    void XavSubCallback(const scale_truck_control::lrc2xav &msg);
+    void XavSubCallback(const scale_truck_control_msgs::lrc2xav &msg);
     void guiTargetVelCallback(const std_msgs::Float32& target_vel);
+    void deepLearningLaneCoefsCallback(const scale_truck_control_msgs::lane_coef& target_vel);
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
@@ -64,7 +65,8 @@ class ScaleTruckController {
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
-	  ros::Subscriber sub_gui_target_vel;
+	ros::Subscriber sub_gui_target_vel;
+	ros::Subscriber sub_deep_learning_lane_coefs;
  
     TruckIndex Index_;
     bool displayImage_;

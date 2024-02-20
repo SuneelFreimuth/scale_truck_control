@@ -18,6 +18,8 @@
 using namespace cv;
 using namespace std;
 
+constexpr bool USE_DEEP_LEARNING = true;
+
 class LaneDetector{
 public:
 	LaneDetector(ros::NodeHandle nh);
@@ -30,10 +32,13 @@ public:
 	void get_steer_coef(float vel);
 	float K1_, K2_;
 	int distance_ = 0;
-	scale_truck_control::lane_coef lane_coef_;
+	scale_truck_control_msgs::lane_coef lane_coef_;
+	scale_truck_control_msgs::lane_coef deep_learning_lane_coef_;
 	Mat frame_;
 
 private:
+    void deepLearningLaneCoefCallback(const scale_truck_control_msgs::lane_coef& lane_coef);
+
 	void LoadParams(void);
 	int arrMaxIdx(int hist[], int start, int end, int Max);
 	Mat polyfit(const vector<int>& x_val, const vector<int>& y_val);
@@ -46,6 +51,7 @@ private:
 	void steer_error_log();
 
 	ros::NodeHandle nodeHandle_;
+    ros::Subscriber sub_deep_learning_lane_coef;
 
 	/********** Camera calibration **********/
 	Mat map1_, map2_;

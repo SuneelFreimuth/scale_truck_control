@@ -19,6 +19,7 @@ find_package(catkin REQUIRED
     cv_bridge
     obstacle_detector 
     scale_truck_control_msgs
+    scale_truck_control_lane_detector
 )
 
 # add_message_files(
@@ -47,6 +48,8 @@ catkin_package(
     std_msgs
     geometry_msgs
     obstacle_detector
+    scale_truck_control_msgs
+    scale_truck_control_lane_detector
 )
 
 include_directories(

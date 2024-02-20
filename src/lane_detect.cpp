@@ -117,6 +117,9 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 	nodeHandle_.param("lane_detector/b/e", b_[4], 1.6722);
 
 	LoadParams();
+
+    sub_deep_learning_lane_coef = nodeHandle_.subscribe("/deep_learning_lane_coefs", 1,
+        &LaneDetector::deepLearningLaneCoefCallback, this);
 }
 
 LaneDetector::~LaneDetector(void) {
@@ -129,6 +132,13 @@ void LaneDetector::LoadParams(void){
 	nodeHandle_.param("lane_detector/trust_height",trust_height_, 1.0f);	
 	nodeHandle_.param("lane_detector/lp",lp_, 756.0f);	
 	nodeHandle_.param("lane_detector/steer_angle",SteerAngle_, 0.0f);
+}
+
+void LaneDetector::deepLearningLaneCoefCallback(
+    const scale_truck_control_msgs::lane_coef& msg
+) {
+    std::cout << "Got lane coefs" << std::endl;
+    deep_learning_lane_coef_ = msg;
 }
 
 Mat LaneDetector::warped_img(Mat _frame) {
@@ -664,17 +674,21 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 
 	float car_position = width_ / 2;
 
-	lane_coef_.right.c2 = r_fit.at<float>(2, 0);
-	lane_coef_.right.c1 = r_fit.at<float>(1, 0);
-	lane_coef_.right.c0 = r_fit.at<float>(0, 0);
+    if (USE_DEEP_LEARNING) {
+        lane_coef_ = deep_learning_lane_coef_;
+    } else {
+        lane_coef_.right.c2 = r_fit.at<float>(2, 0);
+        lane_coef_.right.c1 = r_fit.at<float>(1, 0);
+        lane_coef_.right.c0 = r_fit.at<float>(0, 0);
 
-	lane_coef_.left.c2 = l_fit.at<float>(2, 0);
-	lane_coef_.left.c1 = l_fit.at<float>(1, 0);
-	lane_coef_.left.c0 = l_fit.at<float>(0, 0);
+        lane_coef_.left.c2 = l_fit.at<float>(2, 0);
+        lane_coef_.left.c1 = l_fit.at<float>(1, 0);
+        lane_coef_.left.c0 = l_fit.at<float>(0, 0);
 
-	lane_coef_.center.c2 = c_fit.at<float>(2, 0);
-	lane_coef_.center.c1 = c_fit.at<float>(1, 0);
-	lane_coef_.center.c0 = c_fit.at<float>(0, 0);
+        lane_coef_.center.c2 = c_fit.at<float>(2, 0);
+        lane_coef_.center.c1 = c_fit.at<float>(1, 0);
+        lane_coef_.center.c0 = c_fit.at<float>(0, 0);
+    }
 
 	float i = ((float)height_) * eL_height_;	
 	float j = ((float)height_) * trust_height_;
