@@ -754,7 +754,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 			imshow("Window3", resized_frame);
 		}
 
-		waitKey(_delay);
+		waitKey(1);
 	}
 	clear_release();
 
