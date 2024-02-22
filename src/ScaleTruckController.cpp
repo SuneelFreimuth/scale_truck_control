@@ -153,12 +153,34 @@ cv::Mat ScaleTruckController::draw_lidar()
   float max_x = 640;
 
   cv::Mat output(max_x, max_y, CV_8U, Scalar(0,0,0));
+
+  cv::Point center(max_x/2, max_y);
+  int radius = 200;
+
+  double start_angle = 240.0;
+  double end_angle = 300.0;
+  cv::ellipse(output, cv::Point(200,200), cv::Size(radius, radius), 0, start_angle, end_angle, cv::Scalar(0,0,255,255), 3, cv::LINE_AA, 0);
+  //Calculate start and end points of the slice
+  cv::Point start_point(center.x + radius * cos(start_angle * CV_PI / 180.0),
+                        center.y + radius * sin(start_angle * CV_PI / 180.0));
+  cv::Point end_point(center.x + radius * cos(end_angle * CV_PI / 180.0),
+                      center.y + radius * sin(end_angle * CV_PI / 180.0));
+
+  cv::line(output, center, start_point, cv::Scalar(0,0,255,255), 2);
+  cv::line(output, center, end_point, cv::Scalar(0,0,255,255), 2);
+
+
   for(const auto& circle : Obstacles_.circles)
   {
-    float x = interpolateLinear(circle.center.x, min_range, max_range, 0, max_x);
+    float x = interpolateLinear(circle.center.x, min_range, max_range, -max_x/2, max_x/2);
     float y = interpolateLinear(circle.center.y, min_range, max_range, 0, max_y);
-    cv::circle(output, cv::Point((int)x,(int)y), circle.radius, cv::Scalar(255,255,255), 1, cv::LINE_AA);
+    int new_X = (int)(320 - x);
+    int new_Y = (int)(y+480);
+    //std::cout << "circleX:" << circle.center.x << " circleY:" << circle.center.y << " x:" << x << " y:" << y << " new_X:" << new_X << " new_Y:" << new_Y << std::endl;
+    cv::circle(output, cv::Point(new_X, new_Y), 10, cv::Scalar(255,255,255,255), 2, cv::LINE_AA);
   }
+
+
 
   return output;
 }
@@ -166,15 +188,17 @@ cv::Mat ScaleTruckController::draw_lidar()
 void* ScaleTruckController::objectdetectInThread() {
   float closest_obj_angle = 0.f;
   float closest_obj_dist = 10.f;
+
   for (const auto& circle : Obstacles_.circles) {
     float dist = sqrt(pow(circle.center.x,2)+pow(circle.center.y,2));
     //float dist = -circle.center.x - circle.true_radius;
     float angle = atanf(circle.center.y/circle.center.x)*(180.0f/M_PI);
 
 
-    std::cout << "Distance:" << dist << " Angle:" << angle << " x:" << circle.center.x << " y:" << circle.center.y << std::endl;
+    
     //in constructor, save as two more members. 
     if(closest_obj_dist >= dist) {
+
       closest_obj_dist = dist;
       closest_obj_angle = angle;
     }
