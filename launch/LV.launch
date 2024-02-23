@@ -45,7 +45,7 @@
     <param name="active"			value="true"/>
     <param name="use_scan"			value="true"/>
     <param name="use_pcl"			value="true"/>
-    <param name="use_split_and_merge"		value="false"/>
+    <param name="use_split_and_merge"		value=""/>
     <param name="circles_from_visibles"		value="true"/>
     <param name="discard_converted_segments"	value="true"/>
     <param name="transform_coordinates"		value="true"/>
@@ -75,7 +75,9 @@
   </node>
 
   <!-- Start Scale Truck Control -->
-  <node pkg="scale_truck_control" type="scale_truck_control" name="scale_truck_control" output="screen" />
+  <node pkg="scale_truck_control" type="scale_truck_control" name="scale_truck_control" output="screen">
+    <rosparam command="load" file="$(arg lidar_param_file)"/>
+  </node>
   <!--
   <node pkg="scale_truck_control" type="LRC" name="LRC" output="screen" /> 
   <node pkg="rosserial_python" type="serial_node.py" name="serial_node" >

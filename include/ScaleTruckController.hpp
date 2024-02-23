@@ -129,4 +129,6 @@ class ScaleTruckController {
     void* lanedetectInThread();
     void* objectdetectInThread();
     void displayConsole();
+
+    float LidarViewRange_;
 };
