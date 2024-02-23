@@ -27,7 +27,7 @@
 
 //OpenCV
 #include <cv_bridge/cv_bridge.h>
-
+#include <opencv2/opencv.hpp>
 #include "lane_detect.hpp"
 
 //custom msgs
@@ -51,7 +51,7 @@ class ScaleTruckController {
     bool readParameters();
 
     void init();
-
+    cv::Mat draw_lidar();
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
     void XavSubCallback(const scale_truck_control_msgs::lrc2xav &msg);
@@ -81,7 +81,7 @@ class ScaleTruckController {
     // of lastTxSteerAngle, it will not be broadcast to the
     // low-level controller to save on bandwidth.
     float AngleDegree_; // -1 ~ 1  - Twist msg angular.z
-	float lastTxSteerAngle_;
+	  float lastTxSteerAngle_;
     float TargetVel_; // -1 ~ 1  - Twist msg linear.x
     float SafetyVel_;
     float ResultVel_;
@@ -129,4 +129,6 @@ class ScaleTruckController {
     void* lanedetectInThread();
     void* objectdetectInThread();
     void displayConsole();
+
+    float LidarViewRange_;
 };

@@ -49,7 +49,7 @@ ScaleTruckController::~ScaleTruckController() {
 
 bool ScaleTruckController::readParameters() {
   nodeHandle_.getParam("truck_index", (int&) Index_);
-  nodeHandle_.param("control_node/enable_console_output", enableConsoleOutput_, true);
+  nodeHandle_.param("control_node/enable_console_output", enableConsoleOutput_, false);
   nodeHandle_.param("control_node/enable_image_view", displayImage_, true);
   
   /*******************/
@@ -75,6 +75,13 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("control_node/fv_stop_dist", FVstopDist_, 0.5f); // m
   nodeHandle_.param("control_node/safety_dist", SafetyDist_, 1.5f); // m
   nodeHandle_.param("control_node/target_dist", TargetDist_, 0.8f); // m
+
+  /*******************/
+  /*    Lidar View   */
+  /*******************/
+  nodeHandle_.param("lidar_view/range", LidarViewRange_, 3.0f);
+
+
 
   return true;
 }
@@ -148,18 +155,74 @@ void* ScaleTruckController::lanedetectInThread() {
   AngleDegree_ = laneDetector_.display_img(camImageTmp_, 1000, displayImage_);
 }
 
+cv::Mat ScaleTruckController::draw_lidar()
+{
+  float min_range = 0.1f;
+  float max_range = LidarViewRange_;
+  float max_y = 480;
+  float max_x = 640;
+
+  cv::Mat output(max_y, max_x, CV_8U, Scalar(0,0,0));
+
+  cv::Point center(max_x/2, max_y);
+  double start_angle = 240.0;
+  double end_angle = 300.0;
+  int radius = max_y;
+  //Color is Scalar(A, B, G, R)
+  int divisions = 3;
+  for(int i = 1; i <= divisions; i++){
+    float height = radius*i/divisions;
+    float height_lables = LidarViewRange_*i/divisions;
+    std::string label = std::to_string((int) height_lables) + "m";
+    cv::ellipse(output, center, cv::Size(radius*i/divisions,radius*i/divisions), 0, start_angle, end_angle, cv::Scalar(255,255,255,255), 3, cv::LINE_AA, 0);
+    cv::putText(output, label, cv::Point(0, max_y-height+30), cv::FONT_HERSHEY_DUPLEX, 1.0, cv::Scalar(255,255,255,255), 2); 
+  }
+  
+  //Calculate start and end points of the slice
+  cv::Point start_point(center.x + radius * cos(start_angle * CV_PI / 180.0),
+                        center.y + radius * sin(start_angle * CV_PI / 180.0));
+  cv::Point end_point(center.x + radius * cos(end_angle * CV_PI / 180.0),
+                      center.y + radius * sin(end_angle * CV_PI / 180.0));
+
+  cv::line(output, center, start_point, cv::Scalar(255,0,255,255), 2);
+  cv::line(output, center, end_point, cv::Scalar(255,0,255,255), 2);
+
+
+  for(const auto& circle : Obstacles_.circles)
+  {
+    float x = interpolateLinear(circle.center.x, min_range, max_range, -max_x/2, max_x/2);
+    float y = interpolateLinear(circle.center.y, min_range, max_range, 0, max_y);
+    int new_X = (int)(320 - x);
+    int new_Y = (int)(y+480);
+    //std::cout << "circleX:" << circle.center.x << " circleY:" << circle.center.y << " x:" << x << " y:" << y << " new_X:" << new_X << " new_Y:" << new_Y << std::endl;
+    cv::circle(output, cv::Point(new_X, new_Y), circle.radius*10, cv::Scalar(255,255,255,255), 2, cv::LINE_AA);
+  }
+
+
+
+  return output;
+}
+
 void* ScaleTruckController::objectdetectInThread() {
   float closest_obj_angle = 0.f;
   float closest_obj_dist = 10.f;
+
   for (const auto& circle : Obstacles_.circles) {
-    //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-    float dist = -circle.center.x - circle.true_radius;
+    float dist = sqrt(pow(circle.center.x,2)+pow(circle.center.y,2));
+    //float dist = -circle.center.x - circle.true_radius;
     float angle = atanf(circle.center.y/circle.center.x)*(180.0f/M_PI);
+
+
+    
+    //in constructor, save as two more members. 
     if(closest_obj_dist >= dist) {
+
       closest_obj_dist = dist;
       closest_obj_angle = angle;
     }
+
   }
+
   if(!Obstacles_.circles.empty())
   {
     distance_ = closest_obj_dist;
@@ -200,6 +263,13 @@ void* ScaleTruckController::objectdetectInThread() {
       ResultVel_ = target_vel;
     }
   }
+  cv::Mat lidar_frame = draw_lidar();
+
+  namedWindow("Window4");
+  moveWindow("Window4", 0, 1000);
+  resize(lidar_frame, lidar_frame, Size(640, 480));
+  imshow("Window4", lidar_frame);
+
 }
 
 void ScaleTruckController::displayConsole() {
@@ -242,8 +312,10 @@ void ScaleTruckController::spin() {
     lanedetect_thread.join();
     objectdetect_thread.join();
 
-    if(enableConsoleOutput_)
+    //if(enableConsoleOutput_)
+    if(false){
       displayConsole();
+    }
 
 	if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
       std_msgs::Float32 msg;

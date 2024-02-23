@@ -40,3 +40,5 @@ lrc:
   lrc_to_ocr:
     topic: /lrc2ocr_msg
     queue_size: 1
+lidar_view:
+  range: 3.0
