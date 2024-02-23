@@ -115,7 +115,10 @@ void ScaleTruckController::init() {
   /* Ros Topic Publisher */
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control_msgs::xav2lrc>("/xav2lrc_msg", XavPubQueueSize);
-  xavToOcrPublisher_ = nodeHandle_.advertise<std_msgs::Float32>("/xav2ocr", 20);
+  pubLowLevelSteerAngle_ = nodeHandle_.advertise<std_msgs::Float32>("/low_level_ctrl/steer_angle", 5);
+  std_msgs::Float32 msg;
+  msg.data = 0.f;
+  pubLowLevelSteerAngle_.publish(msg);
 
   /**********************************/
   /* Control & Communication Thread */
@@ -179,23 +182,23 @@ void* ScaleTruckController::objectdetectInThread() {
   }
   
   if(Index_ == LV){	
-	  if(distance_ <= LVstopDist_) {
+    if(distance_ <= LVstopDist_) {
       // Emergency Brake
-	    ResultVel_ = 0.0f;
-	  } else if (distance_ <= SafetyDist_){
-	    float TmpVel_ = interpolateLinear(
+      ResultVel_ = 0.0f;
+    } else if (distance_ <= SafetyDist_){
+      float TmpVel_ = interpolateLinear(
         distance_, LVstopDist_, SafetyDist_, SafetyVel_, ResultVel_);
       ResultVel_ = std::min(target_vel, TmpVel_);
-	  } else{
+    } else{
       ResultVel_ = target_vel;
-	  }
+    }
   } else {
-	  if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)) {
+    if ((distance_ <= FVstopDist_) || (target_vel <= 0.1f)) {
       // Emergency Brake
       ResultVel_ = 0.0f;
     } else {
       ResultVel_ = target_vel;
-	  }
+    }
   }
 }
 
@@ -242,10 +245,10 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
-	  if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
+	if (!equalWithin(AngleDegree_, lastTxSteerAngle_, STEER_ANGLE_TOLERANCE)) {
       std_msgs::Float32 msg;
       msg.data = AngleDegree_;
-      xavToOcrPublisher_.publish(msg);
+      pubLowLevelSteerAngle_.publish(msg);
       lastTxSteerAngle_ = AngleDegree_;
     }
 

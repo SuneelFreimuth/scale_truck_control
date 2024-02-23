@@ -118,8 +118,9 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 
 	LoadParams();
 
-    sub_deep_learning_lane_coef = nodeHandle_.subscribe("/deep_learning_lane_coefs", 1,
-        &LaneDetector::deepLearningLaneCoefCallback, this);
+    if (USE_DEEP_LEARNING)
+        sub_deep_learning_lane_coef = nodeHandle_.subscribe("/deep_learning_lane_coefs", 1,
+            &LaneDetector::deepLearningLaneCoefCallback, this);
 }
 
 LaneDetector::~LaneDetector(void) {
@@ -466,6 +467,20 @@ Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
 	if (left_coef.empty() || right_coef.empty())
 		return _frame;
 
+    if (USE_DEEP_LEARNING) {
+        left_coef.at<float>(0, 0) = deep_learning_lane_coef_.left.c0;
+        left_coef.at<float>(1, 0) = deep_learning_lane_coef_.left.c1;
+        left_coef.at<float>(2, 0) = deep_learning_lane_coef_.left.c2;
+
+        right_coef.at<float>(0, 0) = deep_learning_lane_coef_.right.c0;
+        right_coef.at<float>(1, 0) = deep_learning_lane_coef_.right.c1;
+        right_coef.at<float>(2, 0) = deep_learning_lane_coef_.right.c2;
+
+        center_coef.at<float>(0, 0) = deep_learning_lane_coef_.center.c0;
+        center_coef.at<float>(1, 0) = deep_learning_lane_coef_.center.c1;
+        center_coef.at<float>(2, 0) = deep_learning_lane_coef_.center.c2;
+    }
+
 	trans = getPerspectiveTransform(warpCorners_, corners_);
 	_frame.copyTo(new_frame);
 
@@ -719,16 +734,18 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 	gpu_frame.upload(new_frame);
 	cuda::remap(gpu_frame, gpu_remap_frame, gpu_map1, gpu_map2, INTER_LINEAR);
 	gpu_remap_frame.download(new_frame);
-	cuda::warpPerspective(gpu_remap_frame, gpu_warped_frame, trans, Size(width_, height_));
-	static cv::Ptr< cv::cuda::Filter > filters;
-	filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
-	filters->apply(gpu_warped_frame, gpu_blur_frame);
-	cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
-	cuda::threshold(gpu_gray_frame, gpu_binary_frame, threshold_, 255, THRESH_BINARY);
+    if (!USE_DEEP_LEARNING) {
+        cuda::warpPerspective(gpu_remap_frame, gpu_warped_frame, trans, Size(width_, height_));
+        static cv::Ptr< cv::cuda::Filter > filters;
+        filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
+        filters->apply(gpu_warped_frame, gpu_blur_frame);
+        cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
+        cuda::threshold(gpu_gray_frame, gpu_binary_frame, threshold_, 255, THRESH_BINARY);
 	
-	cuda::bitwise_not(gpu_binary_frame, gpu_inverted_frame);
-	gpu_inverted_frame.download(gray_frame);
-	sliding_frame = detect_lines_sliding_window(gray_frame, _view);
+        cuda::bitwise_not(gpu_binary_frame, gpu_inverted_frame);
+        gpu_inverted_frame.download(gray_frame);
+        sliding_frame = detect_lines_sliding_window(gray_frame, _view);
+    }
 	calc_curv_rad_and_center_dist();
 
 	if (_view) {
@@ -754,7 +771,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 			imshow("Window3", resized_frame);
 		}
 
-		waitKey(_delay);
+		waitKey(1);
 	}
 	clear_release();
 

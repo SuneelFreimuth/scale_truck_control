@@ -60,7 +60,7 @@ class ScaleTruckController {
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
-    ros::Publisher xavToOcrPublisher_;
+    ros::Publisher pubLowLevelSteerAngle_;
 
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
