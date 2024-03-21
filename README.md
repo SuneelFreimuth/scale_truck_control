@@ -42,7 +42,7 @@ sudo apt upgrade
 sudo apt install nvidia-jetpack
 ```
 
-See [https://docs.nvidia.com/jetson/jetpack/install-jetpack/index.html#install-jetpack](the Nvidia documentation) for more details.
+See [the Nvidia Jetpack installation instructions](https://docs.nvidia.com/jetson/jetpack/install-jetpack/index.html#install-jetpack) for more details.
 
 ### Step 2: Build OpenCV 4.4.0 from Source
 
@@ -162,7 +162,9 @@ cd ~/catkin_ws/
 catkin_make
 ```
 
-### Step 5: Install Pip and PyTorch
+### Step 5: (Optional) Install Pip and PyTorch
+
+If you would like to do Pytorch development on the Jetson, complete this step.
 
 Install pip for Python 3.8:
 ```
@@ -201,7 +203,7 @@ cd ~/catkin_ws/src
     ```
     git clone https://github.com/SuneelFreimuth/scale_truck_control_msgs.git 
     ```
-* [geometry_msgs](https://github.com/ros/common_msgs/) (provided by `common_msgs`)
+* [common_msgs](https://github.com/ros/common_msgs/)
     ```
     git clone https://github.com/ros/common_msgs.git
     ```
@@ -226,7 +228,7 @@ cd ~/catkin_ws/src
     git clone -b noetic https://github.com/ros-perception/vision_opencv.git
     ```
 
-Install scale_truck_control_lane_detector's dependencies:
+If you installed Pytorch and cloned SuneelFreimuth/scale_truck_control_lane_detector, install its dependencies:
 ```
 pip3 install -r ~/catkin_ws/src/scale_truck_control_lane_detector/requirements.txt
 ```
@@ -242,6 +244,11 @@ cd ~/catkin_ws/
 catkin_make
 ```
 
+Make sure to run `devel/setup.bash` to make compiled packages discoverable:
+```
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+```
+
 ## Run
 
 After building scale_truck_control as described in the previous section, run `roslaunch`:
@@ -249,7 +256,8 @@ After building scale_truck_control as described in the previous section, run `ro
 roslaunch scale_truck_control LV.launch
 ```
 
-To use the deep learning-based lane detector:
+To use SuneelFreimuth/scale_truck_control_lane_detector:
 ```
 roslaunch scale_truck_control LV_deep_learning.launch
 ```
+
