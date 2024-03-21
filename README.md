@@ -187,7 +187,7 @@ python3 setup.py install --user
 
 ### Step 6: Clone scale_truck_control and Dependencies
 
-Enter `~/catkin_ws/src`, which was created in Step 5, then clone scale_truck_control and each of its dependencies:
+Enter `~/catkin_ws/src`, which was created in Step 4, then clone scale_truck_control and each of its dependencies:
 ```
 cd ~/catkin_ws/src
 ```
