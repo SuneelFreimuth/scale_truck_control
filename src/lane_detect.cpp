@@ -28,6 +28,8 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
     	/******* recording log *******/	  
 	gettimeofday(&start_, NULL);
 
+    nodeHandle_.param("lane_detector/use_deep_learning", useDeepLearning_, false);
+
     	/******* Camera  calibration *******/
 	double matrix[9], dist_coef[5];
 	nodeHandle_.param("lane_detector/calibration/matrix/a",matrix[0], 3.2918100682757097e+02);
@@ -116,9 +118,13 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 	nodeHandle_.param("lane_detector/b/d", b_[3], -4.9047);
 	nodeHandle_.param("lane_detector/b/e", b_[4], 1.6722);
 
-	LoadParams();
+	nodeHandle_.param("lane_detector/eL_height",eL_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/e1_height",e1_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/trust_height",trust_height_, 1.0f);	
+	nodeHandle_.param("lane_detector/lp",lp_, 756.0f);	
+	nodeHandle_.param("lane_detector/steer_angle",SteerAngle_, 0.0f);
 
-    if (USE_DEEP_LEARNING)
+    if (useDeepLearning_)
         sub_deep_learning_lane_coef = nodeHandle_.subscribe("/deep_learning_lane_coefs", 1,
             &LaneDetector::deepLearningLaneCoefCallback, this);
 }
@@ -127,55 +133,11 @@ LaneDetector::~LaneDetector(void) {
 	clear_release();
 }
 
-void LaneDetector::LoadParams(void){
-	nodeHandle_.param("lane_detector/eL_height",eL_height_, 1.0f);	
-	nodeHandle_.param("lane_detector/e1_height",e1_height_, 1.0f);	
-	nodeHandle_.param("lane_detector/trust_height",trust_height_, 1.0f);	
-	nodeHandle_.param("lane_detector/lp",lp_, 756.0f);	
-	nodeHandle_.param("lane_detector/steer_angle",SteerAngle_, 0.0f);
-}
-
 void LaneDetector::deepLearningLaneCoefCallback(
     const scale_truck_control_msgs::lane_coef& msg
 ) {
     std::cout << "Got lane coefs" << std::endl;
     deep_learning_lane_coef_ = msg;
-}
-
-Mat LaneDetector::warped_img(Mat _frame) {
-	Mat result, trans;
-	trans = getPerspectiveTransform(corners_, warpCorners_);
-	warpPerspective(_frame, result, trans, Size(width_, height_));
-
-	return result;
-}
-
-Mat LaneDetector::warped_back_img(Mat _frame) {
-	Mat result, trans;
-	trans = getPerspectiveTransform(warpCorners_, corners_);
-	warpPerspective(_frame, result, trans, Size(width_, height_));
-
-	return result;
-}
-
-int LaneDetector::arrMaxIdx(int hist[], int start, int end, int Max) {
-	int max_index = -1;
-	int max_val = 0;
-
-	if (end > Max)
-		end = Max;
-
-	for (int i = start; i < end; i++) {
-		if (max_val < hist[i]) {
-			max_val = hist[i];
-			max_index = i;
-		}
-	}
-	if (max_index == -1) {
-		cout << "ERROR : hist range" << endl;
-		return -1;
-	}
-	return max_index;
 }
 
 Mat LaneDetector::polyfit(const vector<int>& xs, const vector<int>& ys) {
@@ -294,7 +256,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 		distance = distance_;
 	} else {
 		distance = 0;
-			window_height = height / n_windows;
+		window_height = height / n_windows;
 	}
 	int offset = margin;
 	int range = 120 / 4;
@@ -467,7 +429,7 @@ Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
 	if (left_coef.empty() || right_coef.empty())
 		return _frame;
 
-    if (USE_DEEP_LEARNING) {
+    if (useDeepLearning_) {
         left_coef.at<float>(0, 0) = deep_learning_lane_coef_.left.c0;
         left_coef.at<float>(1, 0) = deep_learning_lane_coef_.left.c1;
         left_coef.at<float>(2, 0) = deep_learning_lane_coef_.left.c2;
@@ -689,7 +651,7 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 
 	float car_position = width_ / 2;
 
-    if (USE_DEEP_LEARNING) {
+    if (useDeepLearning_) {
         lane_coef_ = deep_learning_lane_coef_;
     } else {
         lane_coef_.right.c2 = r_fit.at<float>(2, 0);
@@ -734,7 +696,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 	gpu_frame.upload(new_frame);
 	cuda::remap(gpu_frame, gpu_remap_frame, gpu_map1, gpu_map2, INTER_LINEAR);
 	gpu_remap_frame.download(new_frame);
-    if (!USE_DEEP_LEARNING) {
+    if (!useDeepLearning_) {
         cuda::warpPerspective(gpu_remap_frame, gpu_warped_frame, trans, Size(width_, height_));
         static cv::Ptr< cv::cuda::Filter > filters;
         filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);

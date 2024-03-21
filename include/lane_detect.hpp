@@ -18,8 +18,6 @@
 using namespace cv;
 using namespace std;
 
-constexpr bool USE_DEEP_LEARNING = true;
-
 class LaneDetector{
 public:
 	LaneDetector(ros::NodeHandle nh);
@@ -37,21 +35,17 @@ public:
 	Mat frame_;
 
 private:
-    void deepLearningLaneCoefCallback(const scale_truck_control_msgs::lane_coef& lane_coef);
-
-	void LoadParams(void);
-	int arrMaxIdx(int hist[], int start, int end, int Max);
 	Mat polyfit(const vector<int>& x_val, const vector<int>& y_val);
-	Mat warped_back_img(Mat _frame);
-	Mat warped_img(Mat _frame);
 	Mat detect_lines_sliding_window(Mat _frame, bool _view);
 	Mat draw_lane(Mat _sliding_frame, Mat _frame);
 	void calc_curv_rad_and_center_dist();
 	void clear_release();
 	void steer_error_log();
+    void deepLearningLaneCoefCallback(const scale_truck_control_msgs::lane_coef& lane_coef);
 
 	ros::NodeHandle nodeHandle_;
     ros::Subscriber sub_deep_learning_lane_coef;
+    bool useDeepLearning_;
 
 	/********** Camera calibration **********/
 	Mat map1_, map2_;
